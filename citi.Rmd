@@ -1,0 +1,227 @@
+---
+title: "citi"
+author: "Patrick Lucey"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(duckdb)
+library(DBI)
+library(dplyr)
+library(dbplyr)
+library(ggplot2)
+library(arrow)
+library(prettymapr)
+library(sf)
+library(ggspatial)
+```
+
+```{r}
+con <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
+```
+
+```{sql, connection=con} 
+create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime, ended_at,start_station_latitude,start_station_longitude, start_lat, start_lng, end_lat,end_lng, end_station_latitude, end_station_longitude, tripduration),
+  coalesce(started_at, starttime) as starttime,
+  coalesce(ended_at, stoptime) as stoptime,
+  coalesce(start_station_latitude, start_lat) as start_lat,
+  coalesce(start_station_longitude, start_lng) as start_long,
+  coalesce(end_station_latitude, end_lat) as end_lat,
+  coalesce(end_station_longitude, end_lng) as end_long,
+  round(coalesce(tripduration, date_diff('seconds', coalesce(started_at, starttime), coalesce(ended_at, stoptime)))/ 60)  as tripduration_min,
+  ROUND(
+        3959 * 2 * ASIN(SQRT(
+            POWER(SIN(RADIANS(coalesce(end_station_latitude, end_lat) - coalesce(start_station_latitude, start_lat)) / 2), 2) +
+            COS(RADIANS(coalesce(start_station_latitude, start_lat))) * COS(RADIANS(coalesce(end_station_latitude, end_lat))) * 
+            POWER(SIN(RADIANS( coalesce(end_station_longitude, end_lng) - coalesce(start_station_longitude, start_lng)) / 2), 2)
+        )), 2
+    ) AS distance_between_start_end_station_km
+  FROM read_parquet('trip_data/trip_year=*/trip_month=*/*.parquet', union_by_name=1);
+```
+
+```{sql, connection=con, output.var='citi_sum'}
+summarize citi
+```
+
+```{r eval=FALSE}
+num_trips <- DBI::dbGetQuery(con, 'SELECT 
+start_station_name, end_station_name, 
+    AVG(tripduration_min) AS avg_trip_duration,
+    count(*) as num_trips
+FROM 
+    citi
+GROUP BY 
+    all
+ORDER BY 
+    num_trips desc limit 100;')
+
+```
+
+```{sql, connection=con, eval=FALSE}
+SELECT 
+    station_name,
+    COUNT(*) AS num_trips
+FROM (
+    SELECT 
+        start_station_name AS station_name
+    FROM 
+    citi
+    WHERE 
+        start_station_name IS NOT NULL AND start_station_name <> ''
+    
+    UNION ALL
+    
+    SELECT 
+        end_station_name AS station_name
+    FROM 
+        citi
+    WHERE 
+        end_station_name IS NOT NULL AND end_station_name <> ''
+) AS combined_stations
+GROUP BY 
+    station_name
+ORDER BY 
+    num_trips DESC
+LIMIT 
+    10;
+
+```
+
+```{sql, connection=con, eval= FALSE}
+SELECT 
+    station_name,
+    COUNT(*) AS num_trips
+FROM (
+    SELECT 
+        start_station_name AS station_name
+    FROM 
+    citi
+    WHERE 
+        start_station_name IS NOT NULL AND start_station_name <> ''
+    
+    UNION ALL
+    
+    SELECT 
+        end_station_name AS station_name
+    FROM 
+        citi
+    WHERE 
+        end_station_name IS NOT NULL AND end_station_name <> ''
+) AS combined_stations
+GROUP BY 
+    station_name
+ORDER BY 
+    num_trips ASC
+LIMIT 
+    10;
+
+```
+
+```{sql, connection=con, output.var=heat, eval = FALSE}
+SELECT 
+    station_name,
+    latitude,
+    longitude,
+    Month(trip_date) AS month,
+    COUNT(*) AS num_trips
+FROM (
+    SELECT 
+        start_station_name AS station_name,
+        start_station_latitude AS latitude,
+        start_station_longitude AS longitude,
+        starttime AS trip_date
+    FROM 
+       citi
+    WHERE 
+        start_station_name IS NOT NULL AND start_station_name <> ''
+        AND start_station_latitude IS NOT NULL AND start_station_longitude IS NOT NULL
+    
+    UNION ALL
+    
+    SELECT 
+        end_station_name AS station_name,
+        end_station_latitude AS latitude,
+        end_station_longitude AS longitude,
+        stoptime AS trip_date
+    FROM 
+        citi
+    WHERE 
+        end_station_name IS NOT NULL AND end_station_name <> ''
+        AND end_station_latitude IS NOT NULL AND end_station_longitude IS NOT NULL
+) AS combined_stations
+GROUP BY all
+    
+ORDER BY 
+    num_trips DESC;
+```
+
+```{sql, connection=con, output.var=heat2022, eval=FALSE}
+SELECT 
+    station_name,
+    latitude,
+    longitude,
+    DATE_TRUNC('month', trip_date) AS month,
+    COUNT(*) AS num_trips
+FROM (
+    SELECT 
+        start_station_name AS station_name,
+        start_lat AS latitude,
+        start_lng AS longitude,
+        started_at AS trip_date
+    FROM 
+       citi
+    WHERE 
+        start_station_name IS NOT NULL AND start_station_name <> ''
+        AND start_station_latitude IS NOT NULL AND start_station_longitude IS NOT NULL
+    
+    UNION ALL
+    
+    SELECT 
+        end_station_name AS station_name,
+        end_lat AS latitude,
+        end_lng AS longitude,
+        ended_at AS trip_date
+    FROM 
+        citi
+    WHERE 
+        end_station_name IS NOT NULL AND end_station_name <> ''
+        AND end_station_latitude IS NOT NULL AND end_station_longitude IS NOT NULL
+) AS combined_stations
+GROUP BY 
+    station_name, latitude, longitude, DATE_TRUNC('month', trip_date)
+ORDER BY 
+    num_trips DESC;
+
+```
+
+
+
+```{r, eval=FALSE}
+result_sf <- st_as_sf(heat, coords = c("longitude", "latitude"), crs = 4326)
+```
+
+```{r, eval=FALSE}
+nyc_bbox <- st_bbox(c(xmin = -74.05, ymin = 40.68, xmax = -73.85, ymax = 40.85), crs = st_crs(4326))
+nyc_map <- ggplot() +
+  annotation_map_tile(type = "cartolight", zoom = 12)
+```
+
+
+```{r, eval=FALSE}
+# Create the geographical map
+nyc_map +
+  geom_sf(data = result_sf, aes(color = num_trips), alpha = 0.7) +
+  scale_color_gradient(low = "blue", high = "red") +
+  labs(title = "Geographical Map of Citi Bike Station Usage",
+       x = "Longitude",
+       y = "Latitude",
+       size = "Number of Trips",
+       color = "Number of Trips") +
+  theme_light() +
+  theme(legend.position = "right") + facet_wrap(~ month, ncol = 3)
+```
