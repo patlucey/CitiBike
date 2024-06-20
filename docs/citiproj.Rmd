@@ -1,0 +1,130 @@
+---
+title: "Citi_proj"
+author: "Patrick Lucey"
+date: "`r Sys.Date()`"
+output: html_document
+---
+```{r}
+library(duckdb)
+library(DBI)
+library(dplyr)
+library(dbplyr)
+library(ggplot2)
+library(arrow)
+library(prettymapr)
+library(sf)
+library(ggspatial)
+```
+
+```{r}
+con <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
+```
+
+```{sql, connection=con} 
+create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime, ended_at,start_station_latitude,start_station_longitude, start_lat, start_lng, end_lat,end_lng, end_station_latitude, end_station_longitude, tripduration),
+  coalesce(started_at, starttime) as starttime,
+  coalesce(ended_at, stoptime) as stoptime,
+  coalesce(start_station_latitude, start_lat) as start_lat,
+  coalesce(start_station_longitude, start_lng) as start_long,
+  coalesce(end_station_latitude, end_lat) as end_lat,
+  coalesce(end_station_longitude, end_lng) as end_long,
+  round(coalesce(tripduration, date_diff('seconds', coalesce(started_at, starttime), coalesce(ended_at, stoptime)))/ 60)  as tripduration_min,
+  ROUND(
+        3959 * 2 * ASIN(SQRT(
+            POWER(SIN(RADIANS(coalesce(end_station_latitude, end_lat) - coalesce(start_station_latitude, start_lat)) / 2), 2) +
+            COS(RADIANS(coalesce(start_station_latitude, start_lat))) * COS(RADIANS(coalesce(end_station_latitude, end_lat))) * 
+            POWER(SIN(RADIANS( coalesce(end_station_longitude, end_lng) - coalesce(start_station_longitude, start_lng)) / 2), 2)
+        )), 2
+    ) AS distance_between_start_end_station_km
+  FROM read_parquet('trip_data/trip_year=*/trip_month=*/*.parquet', union_by_name=1);
+```
+
+```{sql, connection=con, output.var='citi_sum'}
+summarize citi
+```
+
+```{sql, connection=con}
+SELECT 
+    HOUR(starttime) AS hour_of_day,
+    AVG(distance_between_start_end_station_km) AS avg_distance,
+     AVG(tripduration_min) AS avg_trip_duration
+FROM 
+    citi
+GROUP BY 
+    hour_of_day
+ORDER BY 
+    hour_of_day;
+```
+```{sql, connection=con}
+SELECT 
+    MONTH(starttime) AS month_of_year,
+    AVG(distance_between_start_end_station_km) AS avg_distance,
+     AVG(tripduration_min) AS avg_trip_duration
+FROM 
+    citi
+GROUP BY 
+    month_of_year
+ORDER BY 
+    month_of_year;
+```
+
+
+```{sql, connection=con}
+select  count(*)
+from citi 
+where tripduration_min > 6000
+; 
+
+```
+
+```{sql, connection=con}
+SELECT start_station_name, end_station_name,
+    AVG(tripduration_min) AS avg_trip_duration,
+    count(*) as num_trips, 
+    HOUR(starttime) AS hour_of_day
+    
+FROM 
+    citi
+WHERE hour_of_day = '17'
+GROUP BY ALL
+having num_trips > 1000
+    
+ORDER BY 
+    num_trips DESC
+    limit 30;
+```
+```{sql, connection=con}
+SELECT start_station_name, end_station_name,
+    AVG(tripduration_min) AS avg_trip_duration,
+    count(*) as num_trips, 
+    HOUR(starttime) AS hour_of_day
+    
+FROM 
+    citi
+WHERE hour_of_day = '17'
+GROUP BY ALL
+having num_trips > 1000
+    
+ORDER BY 
+    num_trips DESC
+    limit 10;
+```
+
+
+
+
+```{r, eval=FALSE}
+ggplot(numtrips, aes(x = reorder(station_name, -num_trips), y = num_trips)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip coordinates for better readability
+  labs(title = "Top 10 Citibike Stations by Number of Trips",
+       x = "Station Name",
+       y = "Number of Trips") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+
+```{r}
+DBI::dbDisconnect(conn = con, shutdown = TRUE)
+```
