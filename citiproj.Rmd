@@ -1,9 +1,15 @@
 ---
-title: "Citi_proj"
+title: "CitiBike Project with SQL and DuckDB"
 author: "Patrick Lucey"
 date: "`r Sys.Date()`"
 output: html_document
+editor_options: 
+  markdown: 
+    wrap: sentence
 ---
+
+### Loading in libraries
+
 ```{r}
 library(duckdb)
 library(DBI)
@@ -14,13 +20,18 @@ library(arrow)
 library(prettymapr)
 library(sf)
 library(ggspatial)
+library(leaflet)
+library(tibble)
+library(tidyr)
 ```
+
+### Establish DuckDB connection
 
 ```{r}
 con <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
 ```
 
-```{sql, connection=con} 
+```{sql, connection=con}
 create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime, ended_at,start_station_latitude,start_station_longitude, start_lat, start_lng, end_lat,end_lng, end_station_latitude, end_station_longitude, tripduration),
   coalesce(started_at, starttime) as starttime,
   coalesce(ended_at, stoptime) as stoptime,
@@ -39,9 +50,52 @@ create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime,
   FROM read_parquet('trip_data/trip_year=*/trip_month=*/*.parquet', union_by_name=1);
 ```
 
+The SQL code provided creates or replaces a view named `citi` that processes and transforms trip data from Parquet files sourced from the Citi Bike database.
+These Parquet files are stored in the `trip_data` directory and are organized by year and month, as indicated by the file path pattern `trip_year=*/trip_month=*/*.parquet`.
+The data includes various attributes related to bike trips, such as start and end times, station locations, and trip durations.
+
+### Data Source and Structure
+
+The Parquet files contain detailed trip data from Citi Bike, a bike-sharing system in New York City.
+Each file includes columns such as `starttime`, `stoptime`, `start_station_latitude`, `start_station_longitude`, `end_station_latitude`, `end_station_longitude`, and `tripduration`.
+These files are organized in a columnar format, which is efficient for both storage and query performance, especially for analytical tasks.
+
+### Column Exclusion and Inclusion
+
+The query begins by selecting all columns from the source data but excludes specific columns that are either redundant or not needed for the final view.
+These columns include `started_at`, `starttime`, `stoptime`, `ended_at`, `start_station_latitude`, `start_station_longitude`, `start_lat`, `start_lng`, `end_lat`, `end_lng`, `end_station_latitude`, `end_station_longitude`, and `tripduration`.
+
+### Handling NULL Values with COALESCE
+
+The `COALESCE` function is used to handle NULL values by returning the first non-null value from a list of expressions.
+This ensures that the view has complete data by combining overlapping columns: - `coalesce(started_at, starttime) as starttime`: Combines `started_at` and `starttime` into a single `starttime` column.
+- `coalesce(ended_at, stoptime) as stoptime`: Combines `ended_at` and `stoptime` into a single `stoptime` column.
+- `coalesce(start_station_latitude, start_lat) as start_lat`: Combines `start_station_latitude` and `start_lat` into a single `start_lat` column.
+- `coalesce(start_station_longitude, start_lng) as start_long`: Combines `start_station_longitude` and `start_lng` into a single `start_long` column.
+- `coalesce(end_station_latitude, end_lat) as end_lat`: Combines `end_station_latitude` and `end_lat` into a single `end_lat` column.
+- `coalesce(end_station_longitude, end_lng) as end_long`: Combines `end_station_longitude` and `end_lng` into a single `end_long` column.
+
+### Calculating Trip Duration
+
+The trip duration is calculated in minutes.
+If the `tripduration` column is not available, the duration is computed as the difference between `starttime` and `stoptime` in seconds, converted to minutes, and rounded: - `round(coalesce(tripduration, date_diff('seconds', coalesce(started_at, starttime), coalesce(ended_at, stoptime)))/ 60) as tripduration_min`
+
+### Calculating Distance Using the Haversine Formula
+
+The distance between the start and end stations is calculated using the Haversine formula, which measures the distance between two points on the Earth's surface based on their latitude and longitude.
+The result is rounded to two decimal places: - `ROUND(3959 * 2 * ASIN(SQRT(POWER(SIN(RADIANS(coalesce(end_station_latitude, end_lat) - coalesce(start_station_latitude, start_lat)) / 2), 2) + COS(RADIANS(coalesce(start_station_latitude, start_lat))) * COS(RADIANS(coalesce(end_station_latitude, end_lat))) * POWER(SIN(RADIANS(coalesce(end_station_longitude, end_lng) - coalesce(start_station_longitude, start_long)) / 2), 2))), 2) AS distance_between_start_end_station_km`
+
+### Summary
+
+The `citi` view processes Citi Bike trip data by reading from Parquet files, excluding unnecessary columns, handling NULL values with the `COALESCE` function, calculating trip durations in minutes, and computing distances between stations using the Haversine formula.
+This transformation and enrichment of data simplify subsequent analyses, making it easier to derive insights into trip patterns and behaviors.
+The use of Parquet files ensures efficient storage and query performance, which is particularly beneficial for large-scale data processing tasks.
+
 ```{sql, connection=con, output.var='citi_sum'}
 summarize citi
 ```
+
+Posted above is the
 
 ```{sql, connection=con}
 SELECT 
@@ -55,6 +109,9 @@ GROUP BY
 ORDER BY 
     hour_of_day;
 ```
+
+As seen in this query it has identified the average trip duration as well as the average distance in km at each given hour of the day.
+
 ```{sql, connection=con}
 SELECT 
     MONTH(starttime) AS month_of_year,
@@ -68,13 +125,13 @@ ORDER BY
     month_of_year;
 ```
 
-
-```{sql, connection=con}
-select  count(*)
-from citi 
-where tripduration_min > 6000
-; 
-
+```{sql, connection=con, output.var='numtrips'}
+select start_station_name,
+count(*) as num_trips
+from citi  
+group by all 
+order by count(*) desc
+ limit 10; 
 ```
 
 ```{sql, connection=con}
@@ -93,37 +150,184 @@ ORDER BY
     num_trips DESC
     limit 30;
 ```
-```{sql, connection=con}
-SELECT start_station_name, end_station_name,
-    AVG(tripduration_min) AS avg_trip_duration,
-    count(*) as num_trips, 
-    HOUR(starttime) AS hour_of_day
-    
-FROM 
-    citi
-WHERE hour_of_day = '17'
-GROUP BY ALL
-having num_trips > 1000
-    
-ORDER BY 
-    num_trips DESC
-    limit 10;
+
+```{r}
+get_top_trips_by_hour <- function(hour, con) {
+  query <- sprintf("
+    SELECT 
+        start_station_name,
+        start_lat,
+        start_long,
+        end_station_name,
+        end_lat,
+        end_long,
+        AVG(tripduration_min) AS avg_trip_duration,
+        COUNT(*) AS num_trips, 
+        HOUR(starttime) AS hour_of_day
+    FROM 
+        citi
+    WHERE 
+        HOUR(starttime) = %d
+    GROUP BY 
+        start_station_name,
+        start_lat,
+        start_long,
+        end_station_name,
+        end_lat,
+        end_long,
+        HOUR(starttime)
+    HAVING 
+        COUNT(*) > 1000
+    ORDER BY 
+        num_trips DESC
+    LIMIT 10;", hour)
+  
+  
+  dbGetQuery(con, query)
+}
+
+results10 <- lapply(0:23, function(hour) {
+  get_top_trips_by_hour(hour, con)
+})
+
+
+final_results10 <- bind_rows(results10)
 ```
 
 
 
+```{r}
+get_top_trips_by_hour <- function(hour, con) {
+  query <- sprintf("
+    SELECT 
+        start_station_name,
+        start_lat,
+        start_long,
+        end_station_name,
+        end_lat,
+        end_long,
+        AVG(tripduration_min) AS avg_trip_duration,
+        COUNT(*) AS num_trips, 
+        HOUR(starttime) AS hour_of_day
+    FROM 
+        citi
+    WHERE 
+        HOUR(starttime) = %d
+    GROUP BY 
+        start_station_name,
+        start_lat,
+        start_long,
+        end_station_name,
+        end_lat,
+        end_long,
+        HOUR(starttime)
+    HAVING 
+        COUNT(*) > 1000
+    ORDER BY 
+        num_trips DESC
+    LIMIT 30;", hour)
+  
+  
+  dbGetQuery(con, query)
+}
 
-```{r, eval=FALSE}
-ggplot(numtrips, aes(x = reorder(station_name, -num_trips), y = num_trips)) +
+results <- lapply(0:23, function(hour) {
+  get_top_trips_by_hour(hour, con)
+})
+
+
+final_results <- bind_rows(results)
+
+```
+
+```{r}
+# Create a Leaflet map
+leaflet_map <- leaflet(final_results) %>%
+  addTiles() %>%  # Add default OpenStreetMap tiles
+  setView(lng = -74.00597, lat = 40.71427, zoom = 12)  # Center the map on NYC
+
+# Add markers for each trip
+leaflet_map <- leaflet_map %>%
+  addCircleMarkers(
+    lng = ~start_long, lat = ~start_lat,
+    radius = 5, color = "blue", fillOpacity = 0.7,
+    popup = ~paste("Start Station:", start_station_name, "<br>",
+                   "End Station:", end_station_name, "<br>",
+                   "Avg Trip Duration:", round(avg_trip_duration, 2), "min", "<br>",
+                   "Number of Trips:", num_trips, "<br>",
+                   "Hour of Day:", hour_of_day)
+  ) %>%
+  addCircleMarkers(
+    lng = ~end_long, lat = ~end_lat,
+    radius = 5, color = "red", fillOpacity = 0.7,
+    popup = ~paste("Start Station:", start_station_name, "<br>",
+                   "End Station:", end_station_name, "<br>",
+                   "Avg Trip Duration:", round(avg_trip_duration, 2), "min", "<br>",
+                   "Number of Trips:", num_trips, "<br>",
+                   "Hour of Day:", hour_of_day)
+  )
+
+
+# Display the map
+leaflet_map
+
+```
+
+```{r}
+ggplot(numtrips, aes(x = reorder(start_station_name, -num_trips), y = num_trips)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   coord_flip() +  # Flip coordinates for better readability
-  labs(title = "Top 10 Citibike Stations by Number of Trips",
+  labs(title = "Top 10 Citibike Stations by Starting Point",
        x = "Station Name",
        y = "Number of Trips") +
   theme_minimal() +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
+```{r}
+# Summarize the average trip duration by hour of day
+avg_trip_duration_by_hour <- final_results %>%
+  group_by(hour_of_day) %>%
+  summarise(avg_trip_duration = mean(avg_trip_duration, na.rm = TRUE))
+
+# Create a line plot using ggplot2
+ggplot(avg_trip_duration_by_hour, aes(x = hour_of_day, y = avg_trip_duration)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(title = "Average Trip Duration by Hour of Day",
+       x = "Hour of Day",
+       y = "Average Trip Duration (minutes)") +
+  theme_minimal()
+```
+
+```{r}
+# Summarize the number of trips by start and end stations
+trip_matrix_data <- final_results10 %>%
+  group_by(start_station_name, end_station_name) %>%
+  summarise(num_trips = sum(num_trips, na.rm = TRUE), .groups = 'drop')
+
+# Convert the summarized data to a matrix using pivot_wider
+trip_matrix <- trip_matrix_data %>%
+  pivot_wider(names_from = end_station_name, values_from = num_trips, values_fill = list(num_trips = 0)) %>%
+  column_to_rownames(var = "start_station_name") %>%
+  as.matrix()
+```
+
+```{r}
+# Convert the matrix to a data frame for ggplot2
+trip_matrix_df <- as.data.frame(as.table(trip_matrix))
+
+# Create a heatmap using ggplot2
+ggplot(trip_matrix_df, aes(Var1, Var2, fill = Freq)) +
+  geom_tile(color = "gray") +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Number of Trips Between Stations",
+       x = "Start Station",
+       y = "End Station",
+       fill = "Number of Trips") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
 
 ```{r}
 DBI::dbDisconnect(conn = con, shutdown = TRUE)
