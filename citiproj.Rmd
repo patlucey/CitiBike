@@ -1,5 +1,5 @@
 ---
-title: "CitiBike Project with SQL and DuckDB"
+title: "CitiBike Project with DuckDB"
 author: "Patrick Lucey"
 date: "`r Sys.Date()`"
 output: html_document
@@ -7,6 +7,15 @@ editor_options:
   markdown: 
     wrap: sentence
 ---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+### Background 
+My name is Patrick Lucey and I am a recent college graduate from Denison University which I studied Data Analytics with a concentration in Economics. During my time at Denison I learned a lot about the data analytics process from data cleaning to data engineering and how to create visuals in an easy to understand manner. 
+My aims for this project was to hone my skill I learned in school to formulate a project that has meaning to me. During my childhood I lived in New York City and got to witness the development and advancement of the citibike program as it went from a few stations to the large network it has now. Throughout this project I will look to establish trends between start and end station as well to examine patterns in trip duration as well as the number of trips per station. 
+
 
 ### Loading in libraries
 
@@ -24,13 +33,94 @@ library(leaflet)
 library(tibble)
 library(tidyr)
 ```
+### Data Wrangling: CSV to Parquet format 
+
+### Code used to create the parquet files for 2020-2023:
+Prior to loading in the data to R-Studio I had to organize the data into a format that would be usable to work with a laptop with a smaller disk. In order to accommodate this problem I decided to turn the data into parquet files in order to account for this storage problem. By creating the parquet files it allowed for the exploration of a dataset in a platform like r-studio. I used the code `create or replace view rides as select *, date_part('year', starttime) as trip_year, date_part('month', starttime) as trip_month from read_csv_auto('citiCSV/2020-citibike-tripdata/*/*.csv', union_by_name=1, hive_partitioning=1, normalize_names=1,ignore_errors=1);` to create the view of each csv file in duckdb. I then downloaded the newly formatted SQL view into a parquet file to save space on my hard drive by using the code: `COPY rides TO 'citiparquet/year='year'' (FORMAT PARQUET, PARTITION_BY (trip_year,trip_month), COMPRESSION 'zstd', ROW_GROUP_SIZE 100_000);` By using this code I was able to compress the massive amounts of data that would've normally taken up gigabytes of storage into a minor file organized by trip year and month. 
+
+
+### Code used to create the parquet files for 2013-2019:
+CREATE OR REPLACE VIEW rides AS
+  SELECT
+      tripduration::BIGINT as tripduration,
+      COALESCE(
+          try_strptime(starttime, '%Y-%m-%d %H:%M:%S'),
+          try_strptime(starttime, '%m/%d/%Y %H:%M:%S'),
+          try_strptime(starttime, '%m/%d/%Y %H:%M')
+      )::TIMESTAMP AS starttime,
+      COALESCE(
+          try_strptime(stoptime, '%Y-%m-%d %H:%M:%S'),
+          try_strptime(stoptime, '%m/%d/%Y %H:%M:%S'),
+          try_strptime(stoptime, '%m/%d/%Y %H:%M')
+      )::TIMESTAMP AS stoptime,
+      start_station_id::BIGINT as start_station_id,
+      start_station_name::VARCHAR as start_station_name,
+      start_station_latitude::DOUBLE as start_station_latitude,
+      start_station_longitude::DOUBLE as start_station_longitude,
+      end_station_id::BIGINT as end_station_id,
+      end_station_name::VARCHAR as end_station_name,
+      end_station_latitude::DOUBLE as end_station_latitude,
+      end_station_longitude::DOUBLE as end_station_longitude,
+      bikeid::BIGINT as bikeid,
+      usertype::VARCHAR as usertype,
+      birth_year::VARCHAR as birth_year, gender::BIGINT as gender,
+      date_part('year', starttime),
+     AS trip_year,
+      date_part('month', starttime)
+     AS trip_month
+  FROM
+      read_csv('citiCSV/2015-citibike-tripdata/*/*.csv',
+               union_by_name=1,
+               hive_partitioning=1,
+               normalize_names=1,
+               ignore_errors=1);
+               
+### Breakdown of above code:
+The provided SQL code creates or replaces a view named `rides` by selecting and transforming data from CSV files. Here's a detailed breakdown of how the code works:
+
+#### 1. **View Creation**
+- `CREATE OR REPLACE VIEW rides AS`: This statement creates a new view named `rides` or replaces it if it already exists.
+
+#### 2. **Column Selection and Transformation**
+- **tripduration**: The `tripduration` column is cast to a `BIGINT` data type.
+- **starttime and stoptime**: These columns are parsed into `TIMESTAMP` format using the `COALESCE` function combined with `try_strptime`. The `COALESCE` function tries multiple date formats until it finds one that works:
+  - `'%Y-%m-%d %H:%M:%S'`
+  - `'%m/%d/%Y %H:%M:%S'`
+  - `'%m/%d/%Y %H:%M'`
+- **Station Information**: Columns related to the start and end stations (IDs, names, latitudes, and longitudes) are cast to appropriate data types (`BIGINT`, `VARCHAR`, `DOUBLE`).
+- **bikeid**: The `bikeid` column is cast to `BIGINT`.
+- **usertype**: The `usertype` column is cast to `VARCHAR`.
+- **birth_year**: The `birth_year` column is cast to `VARCHAR`.
+- **gender**: The `gender` column is cast to `BIGINT`.
+- **trip_year and trip_month**: These columns are extracted from the `starttime` using the `date_part` function to get the year and month parts, respectively.
+
+#### 3. **Data Source**
+- `FROM read_csv('citiCSV/2015-citibike-tripdata/*/*.csv', ...)`: This part reads CSV files from the specified directory (`citiCSV/2015-citibike-tripdata/*/*.csv`). The options used are:
+  - `union_by_name=1`: Combines columns with the same name across multiple files.
+  - `hive_partitioning=1`: Uses Hive-style partitioning.
+  - `normalize_names=1`: Normalizes column names.
+  - `ignore_errors=1`: Ignores errors during the reading process.
+
+### Summary
+This SQL script creates a view that reads and processes Citibike trip data from CSV files, ensuring that date and time fields are correctly parsed and various columns are cast to appropriate data types. The view also extracts the year and month from the trip start time for easier querying. It should be noted that the above query was used for the years 2013-2020 when the data was collected and presented in a certain way. However, when Citibike was bought out by Lyft, they altered their data structure and collection methods as a result. Which is part of the reason that I divided the data into two different time periods to accommodate for the different schemas. This was done in order to be able to read the parquet file in more smoothly. 
+
 
 ### Establish DuckDB connection
 
 ```{r}
-con <- DBI::dbConnect(duckdb::duckdb(), ":memory:")
+con <- DBI::dbConnect(duckdb::duckdb(), "citi")
 ```
 
+```{sql,connection=con}
+SET temp_directory = '/Users/patrick/Documents/CitiBike/tempdir.tmp/';
+-- Limit the memory usage to 4GB
+SET memory_limit = '10GB';
+
+-- Reduce the number of threads to 4
+SET threads = 4;
+```
+
+### Loading in data from 2020-2023 as a view 
 ```{sql, connection=con}
 create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime, ended_at,start_station_latitude,start_station_longitude, start_lat, start_lng, end_lat,end_lng, end_station_latitude, end_station_longitude, tripduration),
   coalesce(started_at, starttime) as starttime,
@@ -50,52 +140,102 @@ create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime,
   FROM read_parquet('trip_data/trip_year=*/trip_month=*/*.parquet', union_by_name=1);
 ```
 
-The SQL code provided creates or replaces a view named `citi` that processes and transforms trip data from Parquet files sourced from the Citi Bike database.
-These Parquet files are stored in the `trip_data` directory and are organized by year and month, as indicated by the file path pattern `trip_year=*/trip_month=*/*.parquet`.
-The data includes various attributes related to bike trips, such as start and end times, station locations, and trip durations.
-
-### Data Source and Structure
-
-The Parquet files contain detailed trip data from Citi Bike, a bike-sharing system in New York City.
-Each file includes columns such as `starttime`, `stoptime`, `start_station_latitude`, `start_station_longitude`, `end_station_latitude`, `end_station_longitude`, and `tripduration`.
-These files are organized in a columnar format, which is efficient for both storage and query performance, especially for analytical tasks.
-
-### Column Exclusion and Inclusion
-
-The query begins by selecting all columns from the source data but excludes specific columns that are either redundant or not needed for the final view.
-These columns include `started_at`, `starttime`, `stoptime`, `ended_at`, `start_station_latitude`, `start_station_longitude`, `start_lat`, `start_lng`, `end_lat`, `end_lng`, `end_station_latitude`, `end_station_longitude`, and `tripduration`.
-
-### Handling NULL Values with COALESCE
-
-The `COALESCE` function is used to handle NULL values by returning the first non-null value from a list of expressions.
-This ensures that the view has complete data by combining overlapping columns: - `coalesce(started_at, starttime) as starttime`: Combines `started_at` and `starttime` into a single `starttime` column.
-- `coalesce(ended_at, stoptime) as stoptime`: Combines `ended_at` and `stoptime` into a single `stoptime` column.
-- `coalesce(start_station_latitude, start_lat) as start_lat`: Combines `start_station_latitude` and `start_lat` into a single `start_lat` column.
-- `coalesce(start_station_longitude, start_lng) as start_long`: Combines `start_station_longitude` and `start_lng` into a single `start_long` column.
-- `coalesce(end_station_latitude, end_lat) as end_lat`: Combines `end_station_latitude` and `end_lat` into a single `end_lat` column.
-- `coalesce(end_station_longitude, end_lng) as end_long`: Combines `end_station_longitude` and `end_lng` into a single `end_long` column.
-
-### Calculating Trip Duration
-
-The trip duration is calculated in minutes.
-If the `tripduration` column is not available, the duration is computed as the difference between `starttime` and `stoptime` in seconds, converted to minutes, and rounded: - `round(coalesce(tripduration, date_diff('seconds', coalesce(started_at, starttime), coalesce(ended_at, stoptime)))/ 60) as tripduration_min`
-
-### Calculating Distance Using the Haversine Formula
-
-The distance between the start and end stations is calculated using the Haversine formula, which measures the distance between two points on the Earth's surface based on their latitude and longitude.
-The result is rounded to two decimal places: - `ROUND(3959 * 2 * ASIN(SQRT(POWER(SIN(RADIANS(coalesce(end_station_latitude, end_lat) - coalesce(start_station_latitude, start_lat)) / 2), 2) + COS(RADIANS(coalesce(start_station_latitude, start_lat))) * COS(RADIANS(coalesce(end_station_latitude, end_lat))) * POWER(SIN(RADIANS(coalesce(end_station_longitude, end_lng) - coalesce(start_station_longitude, start_long)) / 2), 2))), 2) AS distance_between_start_end_station_km`
-
-### Summary
-
-The `citi` view processes Citi Bike trip data by reading from Parquet files, excluding unnecessary columns, handling NULL values with the `COALESCE` function, calculating trip durations in minutes, and computing distances between stations using the Haversine formula.
-This transformation and enrichment of data simplify subsequent analyses, making it easier to derive insights into trip patterns and behaviors.
-The use of Parquet files ensures efficient storage and query performance, which is particularly beneficial for large-scale data processing tasks.
-
-```{sql, connection=con, output.var='citi_sum'}
+```{sql, connection=con, output.var='citi_sum', eval=FALSE}
 summarize citi
 ```
 
-Posted above is the
+### Code Explanation
+
+#### **1. Column Exclusion**
+The `* EXCLUDE()` syntax is used to select all columns from the source data except for the ones listed. This helps remove redundant or conflicting columns that will be replaced by the new derived columns.
+
+#### **2. Column Unification with COALESCE**
+The `COALESCE` function is used to handle columns that may have different names in different datasets but represent the same information. It returns the first non-null value from the list of arguments:
+
+- `COALESCE(started_at, starttime) AS starttime`: Combines `started_at` and `starttime` into a unified `starttime` column.
+- `COALESCE(ended_at, stoptime) AS stoptime`: Combines `ended_at` and `stoptime` into a unified `stoptime` column.
+- `COALESCE(start_station_latitude, start_lat) AS start_lat`: Combines `start_station_latitude` and `start_lat` into a unified `start_lat` column.
+- `COALESCE(start_station_longitude, start_lng) AS start_long`: Combines `start_station_longitude` and `start_lng` into a unified `start_long` column.
+- `COALESCE(end_station_latitude, end_lat) AS end_lat`: Combines `end_station_latitude` and `end_lat` into a unified `end_lat` column.
+- `COALESCE(end_station_longitude, end_lng) AS end_long`: Combines `end_station_longitude` and `end_lng` into a unified `end_long` column.
+
+#### **3. Trip Duration Calculation**
+The trip duration is calculated in minutes:
+
+- `ROUND(COALESCE(tripduration, DATE_DIFF('seconds', COALESCE(started_at, starttime), COALESCE(ended_at, stoptime))) / 60) AS tripduration_min`: If `tripduration` is available, it is used directly. Otherwise, the difference in seconds between `starttime` and `stoptime` is calculated and converted to minutes by dividing by 60.
+
+#### **4. Distance Calculation Using Haversine Formula**
+The distance between the start and end stations is calculated using the Haversine formula, which accounts for the spherical shape of the Earth:
+
+- `ROUND(3959 * 2 * ASIN(SQRT()), 2) AS distance_between_start_end_station_km`: This formula calculates the great-circle distance between two points on the Earth's surface given their latitude and longitude in radians. The result is rounded to 2 decimal places.
+
+#### **5. Reading Data from Parquet Files**
+The data is read from Parquet files located in the specified directory structure:
+
+- `FROM read_parquet('trip_data/trip_year=*/trip_month=*/*.parquet', union_by_name=1)`: This reads all Parquet files matching the pattern, combining columns by name.
+
+### Summary
+The view `citi` consolidates trip data from multiple sources, handling different column names and calculating additional metrics like trip duration in minutes and the distance between start and end stations. This unified view simplifies data analysis by providing consistent and enriched data.
+
+### Loading in data from 2013-2019
+```{sql, connection=con}
+CREATE OR REPLACE VIEW citi2 AS
+SELECT 
+    * EXCLUDE(start_station_latitude,start_station_longitude, end_station_latitude, end_station_longitude, tripduration, bike_year),
+    start_station_latitude as start_lat,
+    start_station_longitude as start_long,
+    end_station_latitude as end_lat,
+    end_station_longitude as end_long,
+    ROUND(DATE_DIFF('seconds', starttime, stoptime) / 60) AS tripduration_min, 
+    
+FROM 
+    read_parquet('trip_data2/trip_year=*/trip_month=*/*.parquet', union_by_name=1)
+```  
+
+```{sql, connection=con, output.var='citi_sum2', eval=FALSE}
+summarize citi2
+```
+
+```{sql, connection=con}
+CREATE OR REPLACE VIEW citi3 AS
+SELECT 
+    * EXCLUDE(start_time, stop_time, start_lon, end_lon, start_station_id, end_station_id, bike_id, ride_id, rideable_type, user_type),
+    date_part('month', COALESCE(
+           try_strptime(start_time::VARCHAR, '%Y-%m-%d %H:%M:%S'),
+           try_strptime(start_time::VARCHAR, '%Y/%m/%d %H:%M:%S'),
+           try_strptime(start_time::VARCHAR, '%m/%d/%Y %H:%M:%S'),
+           try_strptime(start_time::VARCHAR, '%m/%d/%Y %H:%M')
+       )::TIMESTAMP) AS trip_month,
+       start_time as starttime,
+       stop_time as stoptime,
+       start_lon as start_long,
+       end_lon as end_long,
+       user_type as usertype,
+       start_station_id::DOUBLE as start_station_id,
+       end_station_id::DOUBLE as end_station_id,
+       bike_id::BIGINT as bikeid,
+       ROUND(DATE_DIFF('seconds', starttime, stoptime) / 60) AS tripduration_min, 
+       
+       
+FROM 
+    read_parquet('trip_data2/trip_year=*/*.parquet', union_by_name=1)
+```    
+
+
+```{sql, connection=con, output.var='citi_sum3', eval=FALSE}
+summarize citi3
+```
+
+### Code to merge sum2 and sum3
+The purpose of this is to add the years of 2016 and 2017 to the cumulative 2013-2019 collected data. 
+
+```{sql, connection=con}
+CREATE OR REPLACE VIEW merged_view AS
+SELECT * FROM citi2
+UNION BY NAME
+SELECT * FROM citi3;
+
+```
 
 ```{sql, connection=con}
 SELECT 
@@ -110,7 +250,7 @@ ORDER BY
     hour_of_day;
 ```
 
-As seen in this query it has identified the average trip duration as well as the average distance in km at each given hour of the day.
+As seen in this query it has identified the average trip duration as well as the average distance in km at each given hour of the day. 
 
 ```{sql, connection=con}
 SELECT 
@@ -126,9 +266,18 @@ ORDER BY
 ```
 
 ```{sql, connection=con, output.var='numtrips'}
-select start_station_name,
+select start_station_name, end_station_name,
 count(*) as num_trips
 from citi  
+group by all 
+order by count(*) desc
+ limit 10; 
+```
+
+```{sql, connection=con, output.var='numtrips2'}
+select start_station_name, end_station_name,
+count(*) as num_trips
+from merged_view  
 group by all 
 order by count(*) desc
  limit 10; 
@@ -142,7 +291,6 @@ SELECT start_station_name, end_station_name,
     
 FROM 
     citi
-WHERE hour_of_day = '17'
 GROUP BY ALL
 having num_trips > 1000
     
@@ -150,6 +298,22 @@ ORDER BY
     num_trips DESC
     limit 30;
 ```
+```{sql, connection=con}
+SELECT start_station_name, end_station_name,
+    AVG(tripduration_min) AS avg_trip_duration,
+    count(*) as num_trips, 
+    HOUR(starttime) AS hour_of_day
+    
+FROM 
+    merged_view
+GROUP BY ALL
+having num_trips > 1000
+    
+ORDER BY 
+    num_trips DESC
+    limit 30;
+```
+
 
 ```{r}
 get_top_trips_by_hour <- function(hour, con) {
@@ -197,9 +361,8 @@ final_results10 <- bind_rows(results10)
 
 
 ```{r}
-get_top_trips_by_hour <- function(hour, con) {
-  query <- sprintf("
-    SELECT 
+get_top_trips_by_hour2 <- function(hour, con) {
+  query <- sprintf("SELECT 
         start_station_name,
         start_lat,
         start_long,
@@ -210,7 +373,7 @@ get_top_trips_by_hour <- function(hour, con) {
         COUNT(*) AS num_trips, 
         HOUR(starttime) AS hour_of_day
     FROM 
-        citi
+        merged_view
     WHERE 
         HOUR(starttime) = %d
     GROUP BY 
@@ -225,28 +388,27 @@ get_top_trips_by_hour <- function(hour, con) {
         COUNT(*) > 1000
     ORDER BY 
         num_trips DESC
-    LIMIT 30;", hour)
+    LIMIT 10;", hour)
   
   
   dbGetQuery(con, query)
 }
 
-results <- lapply(0:23, function(hour) {
-  get_top_trips_by_hour(hour, con)
+results2 <- lapply(0:23, function(hour) {
+  get_top_trips_by_hour2(hour, con)
 })
 
 
-final_results <- bind_rows(results)
+
+final_results2 <- bind_rows(results2)
 
 ```
 
 ```{r}
-# Create a Leaflet map
-leaflet_map <- leaflet(final_results) %>%
-  addTiles() %>%  # Add default OpenStreetMap tiles
-  setView(lng = -74.00597, lat = 40.71427, zoom = 12)  # Center the map on NYC
+leaflet_map <- leaflet(final_results10) %>%
+  addTiles() %>% 
+  setView(lng = -74.00597, lat = 40.71427, zoom = 12)  
 
-# Add markers for each trip
 leaflet_map <- leaflet_map %>%
   addCircleMarkers(
     lng = ~start_long, lat = ~start_lat,
@@ -255,7 +417,41 @@ leaflet_map <- leaflet_map %>%
                    "End Station:", end_station_name, "<br>",
                    "Avg Trip Duration:", round(avg_trip_duration, 2), "min", "<br>",
                    "Number of Trips:", num_trips, "<br>",
-                   "Hour of Day:", hour_of_day)
+                   "Hour of Day:", hour_of_day, "<br>")
+                  
+)   %>%
+  addCircleMarkers(
+    lng = ~end_long, lat = ~end_lat,
+    radius = 5, color = "red", fillOpacity = 0.7,
+    popup = ~paste("Start Station:", start_station_name, "<br>",
+                   "End Station:", end_station_name, "<br>",
+                   "Avg Trip Duration:", round(avg_trip_duration, 2), "min", "<br>",
+                   "Number of Trips:", num_trips, "<br>",
+                   "Hour of Day:", hour_of_day, "<br>"))
+                  
+  
+
+
+
+leaflet_map
+
+```
+
+```{r}
+leaflet_map2 <- leaflet(final_results2) %>%
+  addTiles() %>% 
+  setView(lng = -74.00597, lat = 40.71427, zoom = 12)  
+
+leaflet_map2 <- leaflet_map2 %>%
+  addCircleMarkers(
+    lng = ~start_long, lat = ~start_lat,
+    radius = 5, color = "blue", fillOpacity = 0.7,
+    popup = ~paste("Start Station:", start_station_name, "<br>",
+                   "End Station:", end_station_name, "<br>",
+                   "Avg Trip Duration:", round(avg_trip_duration, 2), "min", "<br>",
+                   "Number of Trips:", num_trips, "<br>",
+                   "Hour of Day:", hour_of_day, "<br>"
+                   )
   ) %>%
   addCircleMarkers(
     lng = ~end_long, lat = ~end_lat,
@@ -264,12 +460,12 @@ leaflet_map <- leaflet_map %>%
                    "End Station:", end_station_name, "<br>",
                    "Avg Trip Duration:", round(avg_trip_duration, 2), "min", "<br>",
                    "Number of Trips:", num_trips, "<br>",
-                   "Hour of Day:", hour_of_day)
+                   "Hour of Day:", hour_of_day, "<br>")
   )
 
 
-# Display the map
-leaflet_map
+
+leaflet_map2
 
 ```
 
@@ -277,7 +473,17 @@ leaflet_map
 ggplot(numtrips, aes(x = reorder(start_station_name, -num_trips), y = num_trips)) +
   geom_bar(stat = "identity", fill = "steelblue") +
   coord_flip() +  # Flip coordinates for better readability
-  labs(title = "Top 10 Citibike Stations by Starting Point",
+  labs(title = "Top 10 Citibike Stations by Starting Point (2020-2023)",
+       x = "Station Name",
+       y = "Number of Trips") +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+```{r}
+ggplot(numtrips2, aes(x = reorder(start_station_name, -num_trips), y = num_trips)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  coord_flip() +  # Flip coordinates for better readability
+  labs(title = "Top 10 Citibike Stations by Starting Point (2013-2019)",
        x = "Station Name",
        y = "Number of Trips") +
   theme_minimal() +
@@ -285,28 +491,37 @@ ggplot(numtrips, aes(x = reorder(start_station_name, -num_trips), y = num_trips)
 ```
 
 ```{r}
-# Summarize the average trip duration by hour of day
-avg_trip_duration_by_hour <- final_results %>%
+avg_trip_duration_by_hour <- final_results10 %>%
   group_by(hour_of_day) %>%
   summarise(avg_trip_duration = mean(avg_trip_duration, na.rm = TRUE))
 
-# Create a line plot using ggplot2
 ggplot(avg_trip_duration_by_hour, aes(x = hour_of_day, y = avg_trip_duration)) +
   geom_line(color = "blue") +
   geom_point(color = "red") +
-  labs(title = "Average Trip Duration by Hour of Day",
+  labs(title = "Average Trip Duration by Hour of Day(2020-2023)",
+       x = "Hour of Day",
+       y = "Average Trip Duration (minutes)") +
+  theme_minimal()
+```
+```{r}
+avg_trip_duration_by_hour2 <- final_results2 %>%
+  group_by(hour_of_day) %>%
+  summarise(avg_trip_duration = mean(avg_trip_duration, na.rm = TRUE))
+
+ggplot(avg_trip_duration_by_hour2, aes(x = hour_of_day, y = avg_trip_duration)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red") +
+  labs(title = "Average Trip Duration by Hour of Day (2013-2019)",
        x = "Hour of Day",
        y = "Average Trip Duration (minutes)") +
   theme_minimal()
 ```
 
 ```{r}
-# Summarize the number of trips by start and end stations
 trip_matrix_data <- final_results10 %>%
   group_by(start_station_name, end_station_name) %>%
   summarise(num_trips = sum(num_trips, na.rm = TRUE), .groups = 'drop')
 
-# Convert the summarized data to a matrix using pivot_wider
 trip_matrix <- trip_matrix_data %>%
   pivot_wider(names_from = end_station_name, values_from = num_trips, values_fill = list(num_trips = 0)) %>%
   column_to_rownames(var = "start_station_name") %>%
@@ -314,14 +529,36 @@ trip_matrix <- trip_matrix_data %>%
 ```
 
 ```{r}
-# Convert the matrix to a data frame for ggplot2
 trip_matrix_df <- as.data.frame(as.table(trip_matrix))
 
-# Create a heatmap using ggplot2
 ggplot(trip_matrix_df, aes(Var1, Var2, fill = Freq)) +
   geom_tile(color = "gray") +
   scale_fill_gradient(low = "white", high = "blue") +
-  labs(title = "Number of Trips Between Stations",
+  labs(title = "Number of Trips Between Stations(2020-2023)",
+       x = "Start Station",
+       y = "End Station",
+       fill = "Number of Trips") +
+  theme_classic() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+```{r}
+trip_matrix_data2 <- final_results2 %>%
+  group_by(start_station_name, end_station_name) %>%
+  summarise(num_trips = sum(num_trips, na.rm = TRUE), .groups = 'drop')
+
+trip_matrix2 <- trip_matrix_data2%>%
+  pivot_wider(names_from = end_station_name, values_from = num_trips, values_fill = list(num_trips = 0)) %>%
+  column_to_rownames(var = "start_station_name") %>%
+  as.matrix()
+```
+
+```{r}
+trip_matrix_df2 <- as.data.frame(as.table(trip_matrix2))
+
+ggplot(trip_matrix_df2, aes(Var1, Var2, fill = Freq)) +
+  geom_tile(color = "gray") +
+  scale_fill_gradient(low = "white", high = "blue") +
+  labs(title = "Number of Trips Between Stations(2013-2019)",
        x = "Start Station",
        y = "End Station",
        fill = "Number of Trips") +
