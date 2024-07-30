@@ -1,10 +1,10 @@
-title: "My Website"
-output: "docs"
+name: "My Website"
+on: "docs"
 
-nav:
-  - title: "Home"
-    url: "/index.html"
-  - title: "About"
-    url: "/about.html"
-  # - title: "Contact"
-  #   url: "/contact.html"
+env:
+- title: "Home"
+  url: "/index.html"
+- title: "About"
+  url: "/about.html"
+# - title: "Contact"
+#   url: "/contact.html"
