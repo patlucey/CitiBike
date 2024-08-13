@@ -9,9 +9,11 @@
 <meta http-equiv="X-UA-Compatible" content="IE=EDGE" />
 
 
+<meta name="author" content="Patrick Lucey" />
 
+<meta name="date" content="2024-08-13" />
 
-<title>Resumé // About Me</title>
+<title>Final Report for Citibike project</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -348,133 +350,58 @@ display: none;
 
 
 
-<h1 class="title toc-ignore">Resumé // About Me</h1>
+<h1 class="title toc-ignore">Final Report for Citibike project</h1>
+<h4 class="author">Patrick Lucey</h4>
+<h4 class="date">2024-08-13</h4>
 
 </div>
 
 
-<div id="patrick-lucey-data-analytics-professional" class="section level2">
-<h2>Patrick Lucey: Data Analytics Professional</h2>
-<div id="background-and-education" class="section level3">
-<h3><strong>Background and Education</strong></h3>
-<p>My name is Patrick Lucey, a recent graduate from Denison University,
-where I earned a B.A. in Data Analytics with a concentration in
-Economics. During my academic journey, I developed a robust
-understanding of the data analytics process, encompassing data cleaning,
-data engineering, and creating comprehensible visualizations. My
-education has equipped me with a diverse skill set in programming, data
-analysis, and visualization tools. I am passionate about leveraging data
-to drive strategic decisions and solve complex problems. Currently, I am
-seeking opportunities to apply my skills in a professional setting that
-values data-driven insights. In the meantime I am working on personal
-projects to continue to grow my skills and pursue my curiosities in data
-analytics and the world.</p>
+<div id="final-report-for-the-citibike-project" class="section level2">
+<h2>Final Report for the Citibike Project</h2>
+<div id="objective" class="section level3">
+<h3><strong>Objective:</strong></h3>
+<p>When first looking at the Citibike data, I wanted to understand the
+usage patterns of Bike 18104. I aimed to identify the most popular
+stations, the average trip duration, and the number of trips taken by
+the bike. By analyzing the data, I hoped to gain insights into the
+bike’s usage and popularity. By following the patterns of the one
+specific bike I was hoping to see if that could spark any questions that
+could be used to further analyze the data and answer questions about the
+Citibike program as a whole.</p>
 </div>
-<div id="skills" class="section level3">
-<h3><strong>Skills</strong></h3>
-<ul>
-<li><strong>Programming Languages:</strong> Python, R, SQL</li>
-<li><strong>Data Analysis Tools:</strong> Pandas, TensorFlow,
-Tidyverse</li>
-<li><strong>Visualization and Reporting:</strong> Tableau, Excel,
-PowerPoint, Google Sheets, Google Slides</li>
-<li><strong>Analytic Skills:</strong> Report Building, Analytic
-Translation, Analytic Narratives, Statistical Analysis, A/B Testing,
-Data Mining, Technical Requirements Gathering, Machine Learning</li>
-</ul>
+<div id="data-collection" class="section level3">
+<h3><strong>Data Collection:</strong></h3>
+<p>The data was collected and downloaded from the Citibike website. The
+data was then cleaned and processed in RStudio to ensure that it was
+ready for analysis. The data included information on the start and end
+stations, trip duration, and the bike ID. At first I had to clean the
+data to ensure that it was ready for analysis. I did this using DuckDB
+in the terminal on my Macbook air. I had to store the data in a parquet
+format in order to conserve memory and make the data easier to work with
+and store. Once the data was cleaned and stored in a parquet format I
+was able to load the data into RStudio and begin my analysis.</p>
 </div>
-<div id="professional-experience" class="section level3">
-<h3><strong>Professional Experience</strong></h3>
-<div id="denison-university-office-of-the-annual-fund-data-analyst" class="section level4">
-<h4><strong>Denison University Office of the Annual Fund (Data
-Analyst)</strong></h4>
-<ul>
-<li><strong>Database Management:</strong> Ensured the integrity of donor
-databases, supporting accurate data entry and retrieval.</li>
-<li><strong>Data Security:</strong> Implemented security measures and
-weekly backups, achieving 0 unscheduled downtime.</li>
-<li><strong>Data Analysis:</strong> Developed and deployed a supervised
-segmentation model, contributing to an estimated 10,000 in
-donations.</li>
-<li><strong>Report Generation:</strong> Created reports to highlight
-growth opportunities and donor behavior patterns.</li>
-<li><strong>Data-Driven Insights:</strong> Provided actionable insights
-that informed strategic decisions and enhanced fundraising efforts.</li>
-</ul>
-</div>
-<div id="bronx-classical-charter-schools-intern" class="section level4">
-<h4><strong>Bronx Classical Charter Schools (Intern)</strong></h4>
-<ul>
-<li><strong>Teaching Assistance:</strong> Supported classroom
-instruction and aided students with coursework.</li>
-<li><strong>Data Organization:</strong> Organized data for curriculum
-projects, contributing to new educational materials.</li>
-</ul>
-</div>
-<div id="greenwich-community-sailing-instructor" class="section level4">
-<h4><strong>Greenwich Community Sailing Instructor</strong></h4>
-<ul>
-<li><strong>Safety Oversight:</strong> Ensured compliance with safety
-regulations during activities, maintaining a perfect safety record.</li>
-<li><strong>Inventory Management:</strong> Maintained and managed the
-sailing fleet, ensuring 100% availability of vessels.</li>
-</ul>
-</div>
-</div>
-<div id="notable-projects" class="section level3">
-<h3><strong>Notable Projects</strong></h3>
-<div id="lickety-split-using-analytics-to-reduce-traffic-accidents-in-licking-county" class="section level4">
-<h4><strong>Lickety-Split: Using Analytics to Reduce Traffic Accidents
-in Licking County</strong></h4>
-<ul>
-<li><strong>Objective:</strong> Identify actions to reduce traffic
-accidents in Licking County.</li>
-<li><strong>Data Collection:</strong> Utilized RStudio to clean and
-process large datasets.</li>
-<li><strong>Data Analysis:</strong> Developed regression models and
-visualizations to uncover accident trends.</li>
-<li><strong>Findings:</strong> Discovered that areas with inadequate
-shoulder space had higher accident rates.</li>
-<li><strong>Recommendations:</strong> Suggested lowering speed limits
-and investing in better shoulders and lighting.</li>
-</ul>
-</div>
-<div id="birds-on-the-move-an-analysis-of-urbanization-and-migration-patterns" class="section level4">
-<h4><strong>Birds on the Move: An Analysis of Urbanization and Migration
-Patterns</strong></h4>
-<ul>
-<li><strong>Objective:</strong> Examine the impact of urbanization on
-the migration patterns of Canadian Geese and Red Throated Loons.</li>
-<li><strong>Data Collection:</strong> Gathered datasets from Movebank
-and NASA.</li>
-<li><strong>Data Analysis:</strong> Used RStudio to create
-visualizations and perform statistical tests.</li>
-<li><strong>Findings:</strong> Identified changes in migration patterns
-due to urban expansion.</li>
-<li><strong>Recommendations:</strong> Proposed further analysis and
-collaboration with urban planners to allocate natural spaces.</li>
-</ul>
-</div>
-<div id="citibike-project-goals" class="section level4">
-<h4><strong>Citibike Project Goals</strong></h4>
-<p>Growing up in New York City, I witnessed the evolution of the
-Citibike program from a few stations to a vast network that supports and
-supplements the cities transportation needs. This project aims to:</p>
-<ul>
-<li><p><strong>Establish Trends:</strong> Analyze the relationships
-between start and end stations.</p></li>
-<li><p><strong>Examine Patterns:</strong> Investigate trip duration and
-the number of trips per station.</p></li>
-<li><p><strong>Hone Skills:</strong> Apply and refine the data analytics
-skills acquired during my studies to a meaningful project.</p></li>
-<li><p><strong>Track a specific Bike:</strong> Track the usage patterns
-of Bike 18104 to understand its popularity and usage.</p></li>
-</ul>
-<p>This project not only allows me to leverage my technical skills but
-also connects to my personal experiences and interests, providing a
-comprehensive analysis of the Citibike program’s growth and usage
-patterns.</p>
-</div>
+<div id="data-analysis" class="section level3">
+<h3><strong>Data Analysis:</strong></h3>
+<p>I used RStudio to analyze the data and create visualizations to
+better understand the patterns and trends in the data. I created
+visualizations to show the most popular stations, the average trip
+duration, and the number of trips taken by Bike 18104. I also used
+statistical analysis to identify any significant patterns or
+relationships in the data. I used ggplot2 to create visualizations and
+dplyr to manipulate the data. I also used the tidyverse package to help
+with data manipulation and visualization. The main findings of the data
+visualizations were in regards to the busiest times and stations
+throughout the entirety of the dataset. However, I chose to divide up
+the data into smaller timeframes to better understand the patterns and
+trends in the data. The decision to do this was partially made by the
+structure of the data with many of the key variables being altered when
+the citibike program was bought out by lyft. When the program was bought
+out by lyft many of the key variables were changed and the data was
+altered. This made it difficult to analyze the data as a whole and I had
+to divide the data by the year that this change was made and that is how
+I decided to divide the data.</p>
 </div>
 </div>
 
