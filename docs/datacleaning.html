@@ -11,7 +11,7 @@
 
 <meta name="author" content="Patrick Lucey" />
 
-<meta name="date" content="2024-08-15" />
+<meta name="date" content="2024-08-27" />
 
 <title>Data Cleaning With DuckDB and SQL</title>
 
@@ -1569,11 +1569,12 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">Data Cleaning With DuckDB and SQL</h1>
 <h4 class="author">Patrick Lucey</h4>
-<h4 class="date">2024-08-15</h4>
+<h4 class="date">2024-08-27</h4>
 
 </div>
 
 
+<pre class="r"><code>con &lt;- DBI::dbConnect(duckdb::duckdb(), &quot;citi&quot;)</code></pre>
 <div id="data-wrangling-csv-to-parquet-format" class="section level3" number="1">
 <h3><span class="header-section-number">1</span> Data Wrangling: CSV to
 Parquet format</h3>
@@ -1740,6 +1741,7 @@ SET threads = 4;</code></pre>
         )), 2
     ) AS distance_between_start_end_station_km
   FROM read_parquet(&#39;trip_data/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1);</code></pre>
+<pre class="sql"><code>summarize citi</code></pre>
 </div>
 <div id="code-explanation" class="section level3" number="7">
 <h3><span class="header-section-number">7</span> Code Explanation</h3>
@@ -1846,6 +1848,7 @@ SELECT
     
 FROM 
     read_parquet(&#39;trip_data2/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1)</code></pre>
+<pre class="sql"><code>summarize citi2</code></pre>
 <pre class="sql"><code>CREATE OR REPLACE VIEW citi3 AS
 SELECT 
     * EXCLUDE(start_time, stop_time, start_lon, end_lon, start_station_id, end_station_id, bike_id, ride_id, rideable_type, user_type),
@@ -1876,6 +1879,7 @@ SELECT
        
 FROM 
     read_parquet(&#39;trip_data2/trip_year=*/*.parquet&#39;, union_by_name=1)</code></pre>
+<pre class="sql"><code>summarize citi3</code></pre>
 </div>
 <div id="code-to-merge-sum2-and-sum3" class="section level3" number="10">
 <h3><span class="header-section-number">10</span> Code to merge sum2 and
@@ -1886,6 +1890,212 @@ cumulative 2013-2019 collected data.</p>
 SELECT * FROM citi2
 UNION BY NAME
 SELECT * FROM citi3;</code></pre>
+<pre class="sql"><code>summarize merged_view</code></pre>
+</div>
+<div id="sql-summaries-of-the-merged-data" class="section level3" number="11">
+<h3><span class="header-section-number">11</span> SQL Summaries of the
+merged data</h3>
+<pre class="r"><code>citi_sum4</code></pre>
+<pre><code>##                              column_name column_type                 min
+## 1                              starttime   TIMESTAMP 2013-06-01 00:00:01
+## 2                               stoptime   TIMESTAMP 2013-06-01 00:03:07
+## 3                       start_station_id      DOUBLE                72.0
+## 4                     start_station_name     VARCHAR    1 Ave &amp; E 110 St
+## 5                         end_station_id      DOUBLE                72.0
+## 6                       end_station_name     VARCHAR    1 Ave &amp; E 110 St
+## 7                                 bikeid      BIGINT               14529
+## 8                               usertype     VARCHAR            Customer
+## 9                             birth_year     VARCHAR                1857
+## 10                                gender      BIGINT                   0
+## 11                             trip_year      BIGINT                2013
+## 12                            trip_month      BIGINT                   1
+## 13                             start_lat      DOUBLE                 0.0
+## 14                            start_long      DOUBLE  -74.03423398733139
+## 15                               end_lat      DOUBLE                 0.0
+## 16                              end_long      DOUBLE         -74.0858489
+## 17                      tripduration_min      DOUBLE           -481197.0
+## 18 distance_between_start_end_station_km      DOUBLE                 0.0
+##                         max approx_unique                avg
+## 1   2019-12-31 23:59:55.296      71737313               &lt;NA&gt;
+## 2   2020-01-17 20:00:05.082      70763706               &lt;NA&gt;
+## 3                    3911.0          1073 1226.7931355396768
+## 4  old - E 13 St &amp; Avenue A          1100               &lt;NA&gt;
+## 5                    3911.0          1119 1219.1718820141748
+## 6  old - E 13 St &amp; Avenue A          1149               &lt;NA&gt;
+## 7                     42088         25348 24123.620710416544
+## 8                    member             4               &lt;NA&gt;
+## 9                       \\N           225               &lt;NA&gt;
+## 10                        2             3 1.1236590670167026
+## 11                     2019             7 2016.8238575362575
+## 12                       12            12  7.321729241905357
+## 13       45.506364054011385          1164  40.73659408407855
+## 14                      0.0          1149  -73.9852401817477
+## 15       45.506364054011385          1218  40.73625968575022
+## 16                      0.0          1201 -73.98538318031308
+## 17                 441352.0         12560 22.355529980403144
+## 18                  5389.25          1108  1.112845152474452
+##                     std                q25                q50
+## 1                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
+## 2                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
+## 3    1314.7605146640565  346.8977254610977  473.9074780257174
+## 4                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
+## 5     1311.959552466596  345.2770736169467  472.5453282108319
+## 6                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
+## 7     6930.671713337052              18114              22450
+## 8                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
+## 9                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
+## 10   0.5553612819300577                  1                  1
+## 11   1.8969596858162223               2015               2017
+## 12    2.986189475897443                  5                  8
+## 13  0.04092149994330254 40.719074054895984  40.73744381774668
+## 14  0.05713156291217243 -73.99719820130727 -73.98792461440263
+## 15 0.052339395420623436 40.718837288494086  40.73705418710239
+## 16  0.08247291495525004  -73.9973662172374  -73.9881198154944
+## 17    628.7014672010331                6.0               10.0
+## 18    6.981766806337553 0.5245246654738891 0.8627605539447905
+##                   q75    count null_percentage
+## 1                &lt;NA&gt; 85176423            0.00
+## 2                &lt;NA&gt; 85176423            0.00
+## 3  3084.4216844664247 85176423            0.00
+## 4                &lt;NA&gt; 85176423            0.00
+## 5  3076.3393159197904 85176423            0.02
+## 6                &lt;NA&gt; 85176423            0.02
+## 7               29756 85176423            0.00
+## 8                &lt;NA&gt; 85176423            0.00
+## 9                &lt;NA&gt; 85176423            4.85
+## 10                  1 85176423            0.00
+## 11               2018 85176423            0.00
+## 12                 10 85176423            0.00
+## 13 40.754499977472086 85176423            0.00
+## 14 -73.97677464122039 85176423            0.00
+## 15 40.754080768725245 85176423            0.02
+## 16 -73.97692827814605 85176423            0.02
+## 17 17.750413937347552 85176423            0.00
+## 18  1.427074157083832 85176423            0.02</code></pre>
+<pre class="r"><code>citi_sum</code></pre>
+<pre><code>##                              column_name column_type                     min
+## 1                       start_station_id     VARCHAR                     116
+## 2                     start_station_name     VARCHAR        1 Ave &amp; E 110 St
+## 3                         end_station_id     VARCHAR                     116
+## 4                       end_station_name     VARCHAR        1 Ave &amp; E 110 St
+## 5                                 bikeid      BIGINT                   14529
+## 6                               usertype     VARCHAR                Customer
+## 7                             birth_year      BIGINT                    1866
+## 8                                 gender      BIGINT                       0
+## 9                              bike_year      BIGINT                    2020
+## 10                             trip_year      BIGINT                    2020
+## 11                            trip_month      BIGINT                       1
+## 12                               ride_id     VARCHAR        00000045A35269CB
+## 13                         rideable_type     VARCHAR            classic_bike
+## 14                         member_casual     VARCHAR                  casual
+## 15                                 month     VARCHAR                   April
+## 16                             starttime   TIMESTAMP  2020-01-01 00:00:55.39
+## 17                              stoptime   TIMESTAMP 2020-01-01 00:05:29.205
+## 18                             start_lat      DOUBLE            40.574825525
+## 19                            start_long      DOUBLE           -74.072216153
+## 20                               end_lat      DOUBLE                  -37.26
+## 21                              end_long      DOUBLE                 -173.37
+## 22                      tripduration_min      DOUBLE                -10009.0
+## 23 distance_between_start_end_station_km      DOUBLE                     0.0
+##                     max approx_unique                avg                  std
+## 1                SYS039          4771               &lt;NA&gt;                 &lt;NA&gt;
+## 2  York St &amp; Marin Blvd          2457               &lt;NA&gt;                 &lt;NA&gt;
+## 3          Shop Morgan           3715               &lt;NA&gt;                 &lt;NA&gt;
+## 4  York St &amp; Marin Blvd          2477               &lt;NA&gt;                 &lt;NA&gt;
+## 5                 50124         25319 35876.903468721284    9030.846210641961
+## 6            Subscriber             2               &lt;NA&gt;                 &lt;NA&gt;
+## 7                  2005           121  1981.102304641887   12.410341829087795
+## 8                     2             3   1.17445993518266   0.6018311556352449
+## 9                  2023             4 2021.7331065796388   1.0829197177005707
+## 10                 2023             4 2021.7331065796388   1.0829197177005707
+## 11                   12            12  7.058990665770713   3.0079408859628267
+## 12     FFFFFFE8DDCE5606      91797784               &lt;NA&gt;                 &lt;NA&gt;
+## 13        electric_bike             3               &lt;NA&gt;                 &lt;NA&gt;
+## 14               member             2               &lt;NA&gt;                 &lt;NA&gt;
+## 15            September            12               &lt;NA&gt;                 &lt;NA&gt;
+## 16  2023-12-31 23:59:42      69660018               &lt;NA&gt;                 &lt;NA&gt;
+## 17  2024-01-02 00:50:55      68976090               &lt;NA&gt;                 &lt;NA&gt;
+## 18         40.894158244       1704044  40.74046668945409  0.03873878509007763
+## 19   -73.79639436666666       1164657 -73.97488602818714  0.02594122046826478
+## 20                41.17          3360   40.7402329948865  0.04117182766037399
+## 21                  0.0          3329 -73.97498556878308 0.035234010820707234
+## 22             263606.0         10439 17.703664338873335    199.5622570205337
+## 23              8264.47          1586 1.1804001425688402     2.06356673501796
+##                    q25                q50                q75     count
+## 1                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 2                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 3                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 4                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 5                30336              38248              42686 114084727
+## 6                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 7                 1969               1984               1991 114084727
+## 8                    1                  1                  2 114084727
+## 9                 2021               2022               2023 114084727
+## 10                2021               2022               2023 114084727
+## 11                   5                  7                  9 114084727
+## 12                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 13                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 14                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 15                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 16                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 17                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
+## 18   40.71591825875122 40.739334678259134  40.76332909133585 114084727
+## 19  -73.99341158070672 -73.98118788067197 -73.95874553159781 114084727
+## 20   40.71577153287543  40.73902257620067  40.76302929934938 114084727
+## 21  -73.99354776877519 -73.98126300553889 -73.95882572476192 114084727
+## 22   5.919723697453149               10.0 18.621224558987073 114084727
+## 23 0.47675465168707437 0.8825336014672548 1.5601771433107918 114084727
+##    null_percentage
+## 1             0.02
+## 2             0.02
+## 3             0.24
+## 4             0.24
+## 5            81.94
+## 6            81.94
+## 7            81.94
+## 8            81.94
+## 9             0.00
+## 10            0.00
+## 11            0.00
+## 12           18.06
+## 13           18.06
+## 14           18.06
+## 15           75.75
+## 16            0.00
+## 17            0.00
+## 18            0.00
+## 19            0.00
+## 20            0.11
+## 21            0.11
+## 22            0.00
+## 23            0.11</code></pre>
+<p>This code is used to view the datatypes of the columns in both the
+citi views. It was essential to understand and use this attribute in SQL
+in order to understand the data and to complete the proper merges and
+manipulations of the data. The data was formatted in a way that required
+further studying and understanding of the data in order to properly
+manipulate it. This was done in order to understand the data and to be
+able to manipulate it in a way that would be beneficial to the analysis
+of the data. Also, when trying to merge the data each column needed to
+be the same data type in order to merge the data. This was done in order
+to be able to merge the data and to be able to analyze the data in a
+more efficient manner. Furthermore, the summarize feature is useful to
+not only see the datatype, but also it high lights key descriptive
+statistics of the data. This is useful to understand the data and what
+steps need to be taken moving forward, but it also helps with the
+initial tidying.</p>
+<p>As it can be seen the columns that are stored as VARCHAR are columns
+that contain categorical data types like addresses, user types, or ids
+within the data set. The reason for this is because these variables have
+no numerical value and are used to categorize the data. The columns that
+are stored as DOUBLE are columns that contain numerical values that are
+continuous and have a decimal point. The columns that are stored as
+BIGINT are columns that contain numerical values that are whole numbers.
+The reason for this is because these variables have numerical value and
+are used to quantify the data. The columns that are stored as TIMESTAMP
+are columns that contain date and time values. The reason for this is
+because these variables have a date and time value and are used to track
+the dates and times of each different ride.</p>
 </div>
 
 
