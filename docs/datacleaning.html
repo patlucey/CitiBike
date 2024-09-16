@@ -11,7 +11,7 @@
 
 <meta name="author" content="Patrick Lucey" />
 
-<meta name="date" content="2024-08-27" />
+<meta name="date" content="2024-09-16" />
 
 <title>Data Cleaning With DuckDB and SQL</title>
 
@@ -1569,36 +1569,24 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">Data Cleaning With DuckDB and SQL</h1>
 <h4 class="author">Patrick Lucey</h4>
-<h4 class="date">2024-08-27</h4>
+<h4 class="date">2024-09-16</h4>
 
 </div>
 
 
+<div id="setup-establishing-duckdb-connection-and-temp-directory" class="section level3" number="1">
+<h3><span class="header-section-number">1</span> Setup // Establishing
+duckDB connection and Temp Directory</h3>
 <pre class="r"><code>con &lt;- DBI::dbConnect(duckdb::duckdb(), &quot;citi&quot;)</code></pre>
-<div id="data-wrangling-csv-to-parquet-format" class="section level3" number="1">
-<h3><span class="header-section-number">1</span> Data Wrangling: CSV to
-Parquet format</h3>
+<pre class="sql"><code>SET temp_directory = &#39;/Users/patrick/Documents/CitiBike/tempdir.tmp/&#39;;
+-- Limit the memory usage to 4GB
+SET memory_limit = &#39;10GB&#39;;
+
+-- Reduce the number of threads to 4
+SET threads = 4;</code></pre>
 </div>
-<div id="code-used-to-create-the-parquet-files-for-2020-2023" class="section level3" number="2">
+<div id="code-used-to-create-the-parquet-files-for-2013-2019" class="section level3" number="2">
 <h3><span class="header-section-number">2</span> Code used to create the
-parquet files for 2020-2023:</h3>
-<p>Prior to loading in the data to R-Studio I had to organize the data
-into a format that would be usable to work with a laptop with a smaller
-disk. In order to accommodate this problem I decided to turn the data
-into parquet files in order to account for this storage problem. By
-creating the parquet files it allowed for the exploration of a dataset
-in a platform like r-studio. I used the code:
-<code>create or replace view rides as select *, date_part(&#39;year&#39;, starttime) as trip_year, date_part(&#39;month&#39;, starttime) as trip_month from read_csv_auto(&#39;citiCSV/2020-citibike-tripdata/*/*.csv&#39;, union_by_name=1, hive_partitioning=1, normalize_names=1,ignore_errors=1);</code>
-to create the view of each csv file in duckdb. I then downloaded the
-newly formatted SQL view into a parquet file to save space on my hard
-drive by using the code:
-<code>COPY rides TO &#39;citiparquet/year=&#39;year&#39;&#39; (FORMAT PARQUET, PARTITION_BY (trip_year,trip_month), COMPRESSION &#39;zstd&#39;, ROW_GROUP_SIZE 100_000);</code>
-By using this code I was able to compress the massive amounts of data
-that would’ve normally taken up gigabytes of storage into a minor file
-organized by trip year and month.</p>
-</div>
-<div id="code-used-to-create-the-parquet-files-for-2013-2019" class="section level3" number="3">
-<h3><span class="header-section-number">3</span> Code used to create the
 parquet files for 2013-2019:</h3>
 <pre class="r"><code>CREATE OR REPLACE VIEW rides AS
 SELECT
@@ -1635,8 +1623,8 @@ FROM
         normalize_names=1,
         ignore_errors=1
     );</code></pre>
-<div id="view-creation" class="section level4" number="3.1">
-<h4><span class="header-section-number">3.1</span> 1. <strong>View
+<div id="view-creation" class="section level4" number="2.1">
+<h4><span class="header-section-number">2.1</span> 1. <strong>View
 Creation</strong></h4>
 <ul>
 <li><code>CREATE OR REPLACE VIEW rides AS</code>: This statement creates
@@ -1644,8 +1632,8 @@ a new view named <code>rides</code> or replaces it if it already
 exists.</li>
 </ul>
 </div>
-<div id="column-selection-and-transformation" class="section level4" number="3.2">
-<h4><span class="header-section-number">3.2</span> 2. <strong>Column
+<div id="column-selection-and-transformation" class="section level4" number="2.2">
+<h4><span class="header-section-number">2.2</span> 2. <strong>Column
 Selection and Transformation</strong></h4>
 <ul>
 <li><strong>tripduration</strong>: The <code>tripduration</code> column
@@ -1678,8 +1666,8 @@ extracted from the <code>starttime</code> using the
 respectively.</li>
 </ul>
 </div>
-<div id="data-source" class="section level4" number="3.3">
-<h4><span class="header-section-number">3.3</span> 3. <strong>Data
+<div id="data-source" class="section level4" number="2.3">
+<h4><span class="header-section-number">2.3</span> 3. <strong>Data
 Source</strong></h4>
 <ul>
 <li><code>FROM read_csv(&#39;citiCSV/2015-citibike-tripdata/*/*.csv&#39;, ...)</code>:
@@ -1697,8 +1685,8 @@ process.</li>
 </ul>
 </div>
 </div>
-<div id="summary" class="section level3" number="4">
-<h3><span class="header-section-number">4</span> Summary</h3>
+<div id="summary" class="section level3" number="3">
+<h3><span class="header-section-number">3</span> Summary</h3>
 <p>This SQL script creates a view that reads and processes Citibike trip
 data from CSV files, ensuring that date and time fields are correctly
 parsed and various columns are cast to appropriate data types. The view
@@ -1711,123 +1699,8 @@ of the reason that I divided the data into two different time periods to
 accommodate for the different schemas. This was done in order to be able
 to read the parquet file in more smoothly.</p>
 </div>
-<div id="establish-duckdb-connection" class="section level3" number="5">
-<h3><span class="header-section-number">5</span> Establish DuckDB
-connection</h3>
-<pre class="r"><code>con &lt;- DBI::dbConnect(duckdb::duckdb(), &quot;citi&quot;)</code></pre>
-<pre class="sql"><code>SET temp_directory = &#39;/Users/patrick/Documents/CitiBike/tempdir.tmp/&#39;;
--- Limit the memory usage to 4GB
-SET memory_limit = &#39;10GB&#39;;
-
--- Reduce the number of threads to 4
-SET threads = 4;</code></pre>
-</div>
-<div id="loading-in-data-from-2020-2023-as-a-view" class="section level3" number="6">
-<h3><span class="header-section-number">6</span> Loading in data from
-2020-2023 as a view</h3>
-<pre class="sql"><code>create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime, ended_at,start_station_latitude,start_station_longitude, start_lat, start_lng, end_lat,end_lng, end_station_latitude, end_station_longitude, tripduration),
-  coalesce(started_at, starttime) as starttime,
-  coalesce(ended_at, stoptime) as stoptime,
-  coalesce(start_station_latitude, start_lat) as start_lat,
-  coalesce(start_station_longitude, start_lng) as start_long,
-  coalesce(end_station_latitude, end_lat) as end_lat,
-  coalesce(end_station_longitude, end_lng) as end_long,
-  round(coalesce(tripduration, date_diff(&#39;seconds&#39;, coalesce(started_at, starttime), coalesce(ended_at, stoptime)))/ 60)  as tripduration_min,
-  ROUND(
-        3959 * 2 * ASIN(SQRT(
-            POWER(SIN(RADIANS(coalesce(end_station_latitude, end_lat) - coalesce(start_station_latitude, start_lat)) / 2), 2) +
-            COS(RADIANS(coalesce(start_station_latitude, start_lat))) * COS(RADIANS(coalesce(end_station_latitude, end_lat))) * 
-            POWER(SIN(RADIANS( coalesce(end_station_longitude, end_lng) - coalesce(start_station_longitude, start_lng)) / 2), 2)
-        )), 2
-    ) AS distance_between_start_end_station_km
-  FROM read_parquet(&#39;trip_data/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1);</code></pre>
-<pre class="sql"><code>summarize citi</code></pre>
-</div>
-<div id="code-explanation" class="section level3" number="7">
-<h3><span class="header-section-number">7</span> Code Explanation</h3>
-<div id="column-exclusion" class="section level4" number="7.1">
-<h4><span class="header-section-number">7.1</span> <strong>1. Column
-Exclusion</strong></h4>
-<p>The <code>* EXCLUDE()</code> syntax is used to select all columns
-from the source data except for the ones listed. This helps remove
-redundant or conflicting columns that will be replaced by the new
-derived columns.</p>
-</div>
-<div id="column-unification-with-coalesce" class="section level4" number="7.2">
-<h4><span class="header-section-number">7.2</span> <strong>2. Column
-Unification with COALESCE</strong></h4>
-<p>The <code>COALESCE</code> function is used to handle columns that may
-have different names in different datasets but represent the same
-information. It returns the first non-null value from the list of
-arguments:</p>
-<ul>
-<li><code>COALESCE(started_at, starttime) AS starttime</code>: Combines
-<code>started_at</code> and <code>starttime</code> into a unified
-<code>starttime</code> column.</li>
-<li><code>COALESCE(ended_at, stoptime) AS stoptime</code>: Combines
-<code>ended_at</code> and <code>stoptime</code> into a unified
-<code>stoptime</code> column.</li>
-<li><code>COALESCE(start_station_latitude, start_lat) AS start_lat</code>:
-Combines <code>start_station_latitude</code> and <code>start_lat</code>
-into a unified <code>start_lat</code> column.</li>
-<li><code>COALESCE(start_station_longitude, start_lng) AS start_long</code>:
-Combines <code>start_station_longitude</code> and <code>start_lng</code>
-into a unified <code>start_long</code> column.</li>
-<li><code>COALESCE(end_station_latitude, end_lat) AS end_lat</code>:
-Combines <code>end_station_latitude</code> and <code>end_lat</code> into
-a unified <code>end_lat</code> column.</li>
-<li><code>COALESCE(end_station_longitude, end_lng) AS end_long</code>:
-Combines <code>end_station_longitude</code> and <code>end_lng</code>
-into a unified <code>end_long</code> column.</li>
-</ul>
-</div>
-<div id="trip-duration-calculation" class="section level4" number="7.3">
-<h4><span class="header-section-number">7.3</span> <strong>3. Trip
-Duration Calculation</strong></h4>
-<p>The trip duration is calculated in minutes:</p>
-<ul>
-<li><code>ROUND(COALESCE(tripduration, DATE_DIFF(&#39;seconds&#39;, COALESCE(started_at, starttime), COALESCE(ended_at, stoptime))) / 60) AS tripduration_min</code>:
-If <code>tripduration</code> is available, it is used directly.
-Otherwise, the difference in seconds between <code>starttime</code> and
-<code>stoptime</code> is calculated and converted to minutes by dividing
-by 60.</li>
-</ul>
-</div>
-<div id="distance-calculation-using-haversine-formula" class="section level4" number="7.4">
-<h4><span class="header-section-number">7.4</span> <strong>4. Distance
-Calculation Using Haversine Formula</strong></h4>
-<p>The distance between the start and end stations is calculated using
-the Haversine formula, which accounts for the spherical shape of the
-Earth:</p>
-<ul>
-<li><code>ROUND(3959 * 2 * ASIN(SQRT()), 2) AS distance_between_start_end_station_km</code>:
-This formula calculates the great-circle distance between two points on
-the Earth’s surface given their latitude and longitude in radians. The
-result is rounded to 2 decimal places.</li>
-</ul>
-</div>
-<div id="reading-data-from-parquet-files" class="section level4" number="7.5">
-<h4><span class="header-section-number">7.5</span> <strong>5. Reading
-Data from Parquet Files</strong></h4>
-<p>The data is read from Parquet files located in the specified
-directory structure:</p>
-<ul>
-<li><code>FROM read_parquet(&#39;trip_data/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1)</code>:
-This reads all Parquet files matching the pattern, combining columns by
-name.</li>
-</ul>
-</div>
-</div>
-<div id="summary-1" class="section level3" number="8">
-<h3><span class="header-section-number">8</span> Summary</h3>
-<p>The view <code>citi</code> consolidates trip data from multiple
-sources, handling different column names and calculating additional
-metrics like trip duration in minutes and the distance between start and
-end stations. This unified view simplifies data analysis by providing
-consistent and enriched data.</p>
-</div>
-<div id="loading-in-data-from-2013-2019" class="section level3" number="9">
-<h3><span class="header-section-number">9</span> Loading in data from
+<div id="loading-in-data-from-2013-2019" class="section level3" number="4">
+<h3><span class="header-section-number">4</span> Loading in data from
 2013-2019</h3>
 <pre class="sql"><code>CREATE OR REPLACE VIEW citi2 AS
 SELECT 
@@ -1848,7 +1721,6 @@ SELECT
     
 FROM 
     read_parquet(&#39;trip_data2/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1)</code></pre>
-<pre class="sql"><code>summarize citi2</code></pre>
 <pre class="sql"><code>CREATE OR REPLACE VIEW citi3 AS
 SELECT 
     * EXCLUDE(start_time, stop_time, start_lon, end_lon, start_station_id, end_station_id, bike_id, ride_id, rideable_type, user_type),
@@ -1881,20 +1753,23 @@ FROM
     read_parquet(&#39;trip_data2/trip_year=*/*.parquet&#39;, union_by_name=1)</code></pre>
 <pre class="sql"><code>summarize citi3</code></pre>
 </div>
-<div id="code-to-merge-sum2-and-sum3" class="section level3" number="10">
-<h3><span class="header-section-number">10</span> Code to merge sum2 and
+<div id="code-to-merge-sum2-and-sum3" class="section level3" number="5">
+<h3><span class="header-section-number">5</span> Code to merge sum2 and
 sum3</h3>
-<p>The purpose of this is to add the years of 2016 and 2017 to the
-cumulative 2013-2019 collected data.</p>
 <pre class="sql"><code>CREATE OR REPLACE VIEW merged_view AS
 SELECT * FROM citi2
 UNION BY NAME
 SELECT * FROM citi3;</code></pre>
-<pre class="sql"><code>summarize merged_view</code></pre>
+<p>The purpose of this is to add the years of 2016 and 2017 to the
+cumulative 2013-2019 collected data. Due to the current schema of the
+data I had to merge it in a way that allowed for it to be combined. In
+this particular case I unioned each different view by NAME in order for
+them to be properly merged.</p>
 </div>
-<div id="sql-summaries-of-the-merged-data" class="section level3" number="11">
-<h3><span class="header-section-number">11</span> SQL Summaries of the
-merged data</h3>
+<div id="sql-summaries-of-the-merged-data-for-2013-2019" class="section level3" number="6">
+<h3><span class="header-section-number">6</span> SQL Summaries of the
+merged data for 2013-2019</h3>
+<pre class="sql"><code>summarize merged_view</code></pre>
 <pre class="r"><code>citi_sum4</code></pre>
 <pre><code>##                              column_name column_type                 min
 ## 1                              starttime   TIMESTAMP 2013-06-01 00:00:01
@@ -1928,50 +1803,203 @@ merged data</h3>
 ## 10                        2             3 1.1236590670167026
 ## 11                     2019             7 2016.8238575362575
 ## 12                       12            12  7.321729241905357
-## 13       45.506364054011385          1164  40.73659408407855
-## 14                      0.0          1149  -73.9852401817477
-## 15       45.506364054011385          1218  40.73625968575022
-## 16                      0.0          1201 -73.98538318031308
+## 13       45.506364054011385          1164 40.736594084079286
+## 14                      0.0          1149 -73.98524018174385
+## 15       45.506364054011385          1218  40.73625968575093
+## 16                      0.0          1201 -73.98538318031096
 ## 17                 441352.0         12560 22.355529980403144
-## 18                  5389.25          1108  1.112845152474452
+## 18                  5389.25          1108 1.1128451524744634
 ##                     std                q25                q50
 ## 1                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
 ## 2                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
-## 3    1314.7605146640565  346.8977254610977  473.9074780257174
+## 3    1314.7605146640233  346.7130983849404 473.87608734581244
 ## 4                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
-## 5     1311.959552466596  345.2770736169467  472.5453282108319
+## 5    1311.9595524666126 345.43197446943685 472.76468481116717
 ## 6                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
-## 7     6930.671713337052              18114              22450
+## 7    6930.6717133371585              18108              22462
 ## 8                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
 ## 9                  &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt;
-## 10   0.5553612819300577                  1                  1
-## 11   1.8969596858162223               2015               2017
-## 12    2.986189475897443                  5                  8
-## 13  0.04092149994330254 40.719074054895984  40.73744381774668
-## 14  0.05713156291217243 -73.99719820130727 -73.98792461440263
-## 15 0.052339395420623436 40.718837288494086  40.73705418710239
-## 16  0.08247291495525004  -73.9973662172374  -73.9881198154944
-## 17    628.7014672010331                6.0               10.0
-## 18    6.981766806337553 0.5245246654738891 0.8627605539447905
+## 10   0.5553612819301078                  1                  1
+## 11   1.8969596858147202               2015               2017
+## 12   2.9861894758974605                  5                  8
+## 13 0.040921499943300604 40.719057796347535  40.73748068222961
+## 14 0.057131562912181584 -73.99717680600214 -73.98791978048672
+## 15  0.05233939542062536  40.71880761699275  40.73704093513553
+## 16  0.08247291495522735 -73.99744223561416 -73.98815794383388
+## 17    628.7014672010637                6.0  10.11970202979071
+## 18   6.9817668063373794 0.5243303576785517 0.8628646412606037
 ##                   q75    count null_percentage
 ## 1                &lt;NA&gt; 85176423            0.00
 ## 2                &lt;NA&gt; 85176423            0.00
-## 3  3084.4216844664247 85176423            0.00
+## 3  3083.4689598933796 85176423            0.00
 ## 4                &lt;NA&gt; 85176423            0.00
-## 5  3076.3393159197904 85176423            0.02
+## 5  3078.5729298613232 85176423            0.02
 ## 6                &lt;NA&gt; 85176423            0.02
-## 7               29756 85176423            0.00
+## 7               29758 85176423            0.00
 ## 8                &lt;NA&gt; 85176423            0.00
 ## 9                &lt;NA&gt; 85176423            4.85
 ## 10                  1 85176423            0.00
 ## 11               2018 85176423            0.00
 ## 12                 10 85176423            0.00
-## 13 40.754499977472086 85176423            0.00
-## 14 -73.97677464122039 85176423            0.00
-## 15 40.754080768725245 85176423            0.02
-## 16 -73.97692827814605 85176423            0.02
-## 17 17.750413937347552 85176423            0.00
-## 18  1.427074157083832 85176423            0.02</code></pre>
+## 13 40.754447356838654 85176423            0.00
+## 14 -73.97672258430683 85176423            0.00
+## 15 40.753973876210736 85176423            0.02
+## 16 -73.97693623157384 85176423            0.02
+## 17  17.87736989416459 85176423            0.00
+## 18 1.4273301726860181 85176423            0.02</code></pre>
+<p>This code is used to view the datatypes of the columns in both the
+citi views. It was essential to understand and use this attribute in SQL
+in order to understand the data and to complete the proper merges and
+manipulations of the data. The data was formatted in a way that required
+further studying and understanding of the data in order to properly
+manipulate it. This was done in order to understand the data and to be
+able to manipulate it in a way that would be beneficial to the analysis
+of the data. Also, when trying to merge the data each column needed to
+be the same data type in order to merge the data. This was done in order
+to be able to merge the data and to be able to analyze the data in a
+more efficient manner. Furthermore, the summarize feature is useful to
+not only see the datatype, but also it high lights key descriptive
+statistics of the data. This is useful to understand the data and what
+steps need to be taken moving forward, but it also helps with the
+initial tidying.</p>
+<p>As it can be seen the columns that are stored as VARCHAR are columns
+that contain categorical data types like addresses, user types, or ids
+within the data set. The reason for this is because these variables have
+no numerical value and are used to categorize the data. The columns that
+are stored as DOUBLE are columns that contain numerical values that are
+continuous and have a decimal point. The columns that are stored as
+BIGINT are columns that contain numerical values that are whole numbers.
+The reason for this is because these variables have numerical value and
+are used to quantify the data. The columns that are stored as TIMESTAMP
+are columns that contain date and time values. The reason for this is
+because these variables have a date and time value and are used to track
+the dates and times of each different ride.</p>
+</div>
+<div id="code-used-to-create-the-parquet-files-for-2020-2023" class="section level3" number="7">
+<h3><span class="header-section-number">7</span> Code used to create the
+parquet files for 2020-2023:</h3>
+<p>Prior to loading in the data to R-Studio I had to organize the data
+into a format that would be usable to work with a laptop with a smaller
+disk. In order to accommodate this problem I decided to turn the data
+into parquet files in order to account for this storage problem. By
+creating the parquet files it allowed for the exploration of a dataset
+in a platform like r-studio. I used the code:
+<code>create or replace view rides as select *, date_part(&#39;year&#39;, starttime) as trip_year, date_part(&#39;month&#39;, starttime) as trip_month from read_csv_auto(&#39;citiCSV/2020-citibike-tripdata/*/*.csv&#39;, union_by_name=1, hive_partitioning=1, normalize_names=1,ignore_errors=1);</code>
+to create the view of each csv file in duckdb. I then downloaded the
+newly formatted SQL view into a parquet file to save space on my hard
+drive by using the code:
+<code>COPY rides TO &#39;citiparquet/year=&#39;year&#39;&#39; (FORMAT PARQUET, PARTITION_BY (trip_year,trip_month), COMPRESSION &#39;zstd&#39;, ROW_GROUP_SIZE 100_000);</code>
+By using this code I was able to compress the massive amounts of data
+that would’ve normally taken up gigabytes of storage into a minor file
+organized by trip year and month.</p>
+</div>
+<div id="loading-in-data-from-2020-2023-as-a-view" class="section level3" number="8">
+<h3><span class="header-section-number">8</span> Loading in data from
+2020-2023 as a view</h3>
+<pre class="sql"><code>create or replace view citi as select * EXCLUDE(started_at, starttime, stoptime, ended_at,start_station_latitude,start_station_longitude, start_lat, start_lng, end_lat,end_lng, end_station_latitude, end_station_longitude, tripduration),
+  coalesce(started_at, starttime) as starttime,
+  coalesce(ended_at, stoptime) as stoptime,
+  coalesce(start_station_latitude, start_lat) as start_lat,
+  coalesce(start_station_longitude, start_lng) as start_long,
+  coalesce(end_station_latitude, end_lat) as end_lat,
+  coalesce(end_station_longitude, end_lng) as end_long,
+  round(coalesce(tripduration, date_diff(&#39;seconds&#39;, coalesce(started_at, starttime), coalesce(ended_at, stoptime)))/ 60)  as tripduration_min,
+  ROUND(
+        3959 * 2 * ASIN(SQRT(
+            POWER(SIN(RADIANS(coalesce(end_station_latitude, end_lat) - coalesce(start_station_latitude, start_lat)) / 2), 2) +
+            COS(RADIANS(coalesce(start_station_latitude, start_lat))) * COS(RADIANS(coalesce(end_station_latitude, end_lat))) * 
+            POWER(SIN(RADIANS( coalesce(end_station_longitude, end_lng) - coalesce(start_station_longitude, start_lng)) / 2), 2)
+        )), 2
+    ) AS distance_between_start_end_station_km
+  FROM read_parquet(&#39;trip_data/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1);</code></pre>
+</div>
+<div id="code-explanation" class="section level3" number="9">
+<h3><span class="header-section-number">9</span> Code Explanation</h3>
+<div id="column-exclusion" class="section level4" number="9.1">
+<h4><span class="header-section-number">9.1</span> <strong>1. Column
+Exclusion</strong></h4>
+<p>The <code>* EXCLUDE()</code> syntax is used to select all columns
+from the source data except for the ones listed. This helps remove
+redundant or conflicting columns that will be replaced by the new
+derived columns.</p>
+</div>
+<div id="column-unification-with-coalesce" class="section level4" number="9.2">
+<h4><span class="header-section-number">9.2</span> <strong>2. Column
+Unification with COALESCE</strong></h4>
+<p>The <code>COALESCE</code> function is used to handle columns that may
+have different names in different datasets but represent the same
+information. It returns the first non-null value from the list of
+arguments:</p>
+<ul>
+<li><code>COALESCE(started_at, starttime) AS starttime</code>: Combines
+<code>started_at</code> and <code>starttime</code> into a unified
+<code>starttime</code> column.</li>
+<li><code>COALESCE(ended_at, stoptime) AS stoptime</code>: Combines
+<code>ended_at</code> and <code>stoptime</code> into a unified
+<code>stoptime</code> column.</li>
+<li><code>COALESCE(start_station_latitude, start_lat) AS start_lat</code>:
+Combines <code>start_station_latitude</code> and <code>start_lat</code>
+into a unified <code>start_lat</code> column.</li>
+<li><code>COALESCE(start_station_longitude, start_lng) AS start_long</code>:
+Combines <code>start_station_longitude</code> and <code>start_lng</code>
+into a unified <code>start_long</code> column.</li>
+<li><code>COALESCE(end_station_latitude, end_lat) AS end_lat</code>:
+Combines <code>end_station_latitude</code> and <code>end_lat</code> into
+a unified <code>end_lat</code> column.</li>
+<li><code>COALESCE(end_station_longitude, end_lng) AS end_long</code>:
+Combines <code>end_station_longitude</code> and <code>end_lng</code>
+into a unified <code>end_long</code> column.</li>
+</ul>
+</div>
+<div id="trip-duration-calculation" class="section level4" number="9.3">
+<h4><span class="header-section-number">9.3</span> <strong>3. Trip
+Duration Calculation</strong></h4>
+<p>The trip duration is calculated in minutes:</p>
+<ul>
+<li><code>ROUND(COALESCE(tripduration, DATE_DIFF(&#39;seconds&#39;, COALESCE(started_at, starttime), COALESCE(ended_at, stoptime))) / 60) AS tripduration_min</code>:
+If <code>tripduration</code> is available, it is used directly.
+Otherwise, the difference in seconds between <code>starttime</code> and
+<code>stoptime</code> is calculated and converted to minutes by dividing
+by 60.</li>
+</ul>
+</div>
+<div id="distance-calculation-using-haversine-formula" class="section level4" number="9.4">
+<h4><span class="header-section-number">9.4</span> <strong>4. Distance
+Calculation Using Haversine Formula</strong></h4>
+<p>The distance between the start and end stations is calculated using
+the Haversine formula, which accounts for the spherical shape of the
+Earth:</p>
+<ul>
+<li><code>ROUND(3959 * 2 * ASIN(SQRT()), 2) AS distance_between_start_end_station_km</code>:
+This formula calculates the great-circle distance between two points on
+the Earth’s surface given their latitude and longitude in radians. The
+result is rounded to 2 decimal places.</li>
+</ul>
+</div>
+<div id="reading-data-from-parquet-files" class="section level4" number="9.5">
+<h4><span class="header-section-number">9.5</span> <strong>5. Reading
+Data from Parquet Files</strong></h4>
+<p>The data is read from Parquet files located in the specified
+directory structure:</p>
+<ul>
+<li><code>FROM read_parquet(&#39;trip_data/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1)</code>:
+This reads all Parquet files matching the pattern, combining columns by
+name.</li>
+</ul>
+</div>
+</div>
+<div id="summary-1" class="section level3" number="10">
+<h3><span class="header-section-number">10</span> Summary</h3>
+<p>The view <code>citi</code> consolidates trip data from multiple
+sources, handling different column names and calculating additional
+metrics like trip duration in minutes and the distance between start and
+end stations. This unified view simplifies data analysis by providing
+consistent and enriched data.</p>
+</div>
+<div id="sql-summary-of-the-citi-data-from-2020-2023" class="section level3" number="11">
+<h3><span class="header-section-number">11</span> SQL summary of the
+Citi data from 2020-2023</h3>
+<pre class="sql"><code>summarize citi</code></pre>
 <pre class="r"><code>citi_sum</code></pre>
 <pre><code>##                              column_name column_type                     min
 ## 1                       start_station_id     VARCHAR                     116
@@ -2002,31 +2030,31 @@ merged data</h3>
 ## 2  York St &amp; Marin Blvd          2457               &lt;NA&gt;                 &lt;NA&gt;
 ## 3          Shop Morgan           3715               &lt;NA&gt;                 &lt;NA&gt;
 ## 4  York St &amp; Marin Blvd          2477               &lt;NA&gt;                 &lt;NA&gt;
-## 5                 50124         25319 35876.903468721284    9030.846210641961
+## 5                 50124         25319 35876.903468721284    9030.846210642096
 ## 6            Subscriber             2               &lt;NA&gt;                 &lt;NA&gt;
-## 7                  2005           121  1981.102304641887   12.410341829087795
-## 8                     2             3   1.17445993518266   0.6018311556352449
-## 9                  2023             4 2021.7331065796388   1.0829197177005707
-## 10                 2023             4 2021.7331065796388   1.0829197177005707
-## 11                   12            12  7.058990665770713   3.0079408859628267
+## 7                  2005           121  1981.102304641887   12.410341829089004
+## 8                     2             3   1.17445993518266   0.6018311556352506
+## 9                  2023             4 2021.7331065796388    1.082919717713304
+## 10                 2023             4 2021.7331065796388    1.082919717713304
+## 11                   12            12  7.058990665770713   3.0079408859630656
 ## 12     FFFFFFE8DDCE5606      91797784               &lt;NA&gt;                 &lt;NA&gt;
 ## 13        electric_bike             3               &lt;NA&gt;                 &lt;NA&gt;
 ## 14               member             2               &lt;NA&gt;                 &lt;NA&gt;
 ## 15            September            12               &lt;NA&gt;                 &lt;NA&gt;
 ## 16  2023-12-31 23:59:42      69660018               &lt;NA&gt;                 &lt;NA&gt;
 ## 17  2024-01-02 00:50:55      68976090               &lt;NA&gt;                 &lt;NA&gt;
-## 18         40.894158244       1704044  40.74046668945409  0.03873878509007763
-## 19   -73.79639436666666       1164657 -73.97488602818714  0.02594122046826478
-## 20                41.17          3360   40.7402329948865  0.04117182766037399
-## 21                  0.0          3329 -73.97498556878308 0.035234010820707234
-## 22             263606.0         10439 17.703664338873335    199.5622570205337
-## 23              8264.47          1586 1.1804001425688402     2.06356673501796
+## 18         40.894158244       1704044 40.740466689451935  0.03873878509004156
+## 19   -73.79639436666666       1164657 -73.97488602818571 0.025941220467775375
+## 20                41.17          3360  40.74023299488585  0.04117182766037591
+## 21                  0.0          3329 -73.97498556877213  0.03523401081955273
+## 22             263606.0         10439 17.703664338873335    199.5622570205663
+## 23              8264.47          1586 1.1804001425688715    2.063566735018014
 ##                    q25                q50                q75     count
 ## 1                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
 ## 2                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
 ## 3                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
 ## 4                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
-## 5                30336              38248              42686 114084727
+## 5                30329              38270              42687 114084727
 ## 6                 &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
 ## 7                 1969               1984               1991 114084727
 ## 8                    1                  1                  2 114084727
@@ -2039,12 +2067,12 @@ merged data</h3>
 ## 15                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
 ## 16                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
 ## 17                &lt;NA&gt;               &lt;NA&gt;               &lt;NA&gt; 114084727
-## 18   40.71591825875122 40.739334678259134  40.76332909133585 114084727
-## 19  -73.99341158070672 -73.98118788067197 -73.95874553159781 114084727
-## 20   40.71577153287543  40.73902257620067  40.76302929934938 114084727
-## 21  -73.99354776877519 -73.98126300553889 -73.95882572476192 114084727
-## 22   5.919723697453149               10.0 18.621224558987073 114084727
-## 23 0.47675465168707437 0.8825336014672548 1.5601771433107918 114084727
+## 18   40.71591433693923 40.739345626441754 40.763271423877164 114084727
+## 19  -73.99337483944215 -73.98118938047453 -73.95873778720662 114084727
+## 20   40.71586565794291 40.739015296720325 40.763100949237874 114084727
+## 21  -73.99357021892018 -73.98128183012994 -73.95882166400999 114084727
+## 22   5.935415804044049   10.1074304621354  18.62115803087668 114084727
+## 23 0.47726244582825794 0.8825329306481596 1.5592689687326968 114084727
 ##    null_percentage
 ## 1             0.02
 ## 2             0.02
@@ -2069,33 +2097,6 @@ merged data</h3>
 ## 21            0.11
 ## 22            0.00
 ## 23            0.11</code></pre>
-<p>This code is used to view the datatypes of the columns in both the
-citi views. It was essential to understand and use this attribute in SQL
-in order to understand the data and to complete the proper merges and
-manipulations of the data. The data was formatted in a way that required
-further studying and understanding of the data in order to properly
-manipulate it. This was done in order to understand the data and to be
-able to manipulate it in a way that would be beneficial to the analysis
-of the data. Also, when trying to merge the data each column needed to
-be the same data type in order to merge the data. This was done in order
-to be able to merge the data and to be able to analyze the data in a
-more efficient manner. Furthermore, the summarize feature is useful to
-not only see the datatype, but also it high lights key descriptive
-statistics of the data. This is useful to understand the data and what
-steps need to be taken moving forward, but it also helps with the
-initial tidying.</p>
-<p>As it can be seen the columns that are stored as VARCHAR are columns
-that contain categorical data types like addresses, user types, or ids
-within the data set. The reason for this is because these variables have
-no numerical value and are used to categorize the data. The columns that
-are stored as DOUBLE are columns that contain numerical values that are
-continuous and have a decimal point. The columns that are stored as
-BIGINT are columns that contain numerical values that are whole numbers.
-The reason for this is because these variables have numerical value and
-are used to quantify the data. The columns that are stored as TIMESTAMP
-are columns that contain date and time values. The reason for this is
-because these variables have a date and time value and are used to track
-the dates and times of each different ride.</p>
 </div>
 
 
