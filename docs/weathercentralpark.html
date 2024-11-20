@@ -2942,7 +2942,12 @@ Data for Central Park and Merge with CitiBike Data</h1>
 </div>
 
 
+<div id="database-connection" class="section level1">
+<h1>Database Connection</h1>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>con <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbConnect</span>(duckdb<span class="sc">::</span><span class="fu">duckdb</span>(), <span class="st">&quot;citi&quot;</span>)</span></code></pre></div>
+</div>
+<div id="python-script-to-fetch-historical-weather-data-for-central-park" class="section level1">
+<h1>Python script to fetch historical weather data for Central Park</h1>
 <div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="im">import</span> requests</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a><span class="im">from</span> datetime <span class="im">import</span> datetime, timedelta</span>
@@ -3003,51 +3008,86 @@ Data for Central Park and Merge with CitiBike Data</h1>
 <span id="cb2-58"><a href="#cb2-58" tabindex="-1"></a>    <span class="co"># Save to CSV</span></span>
 <span id="cb2-59"><a href="#cb2-59" tabindex="-1"></a>    final_df.to_csv(<span class="st">&quot;central_park_weather_2010_2020.csv&quot;</span>, index<span class="op">=</span><span class="va">False</span>)</span>
 <span id="cb2-60"><a href="#cb2-60" tabindex="-1"></a>    <span class="bu">print</span>(<span class="st">&quot;Data saved to central_park_weather_2010_2020.csv&quot;</span>)</span></code></pre></div>
+<div id="explanation-of-above-code" class="section level3">
+<h3>Explanation of above code</h3>
+<p>This Python script fetches historical weather data for Central Park
+from the Open-Meteo API. The script fetches hourly temperature and
+precipitation data for the specified latitude and longitude coordinates.
+The data is fetched in one-year chunks due to API limitations. The
+fetched data is then processed and saved to a CSV file named
+<code>central_park_weather_2010_2020.csv</code>.</p>
 <div class="sourceCode" id="cb3"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="co">-- Create the table to match your CSV structure</span></span>
 <span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">TABLE</span> <span class="cf">IF</span> <span class="kw">NOT</span> <span class="kw">EXISTS</span> CentralParkWeather (</span>
 <span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="dt">time</span> <span class="dt">TIMESTAMP</span>,</span>
 <span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    temperature <span class="dt">FLOAT</span>,</span>
 <span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>    precipitation <span class="dt">FLOAT</span></span>
 <span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>);</span></code></pre></div>
-<div class="sourceCode" id="cb4"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co">-- Rename the &#39;time&#39; column to &#39;rounded_time&#39; to merge with the CitiBike data</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="kw">ALTER</span> <span class="kw">TABLE</span> CentralParkWeather</span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="kw">RENAME</span> <span class="kw">COLUMN</span> <span class="dt">Time</span> <span class="kw">TO</span> rounded_time;</span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">or</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> merged_view2 <span class="kw">AS</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span>,</span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>    </span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>    DATE_TRUNC(<span class="st">&#39;hour&#39;</span>, starttime) <span class="op">+</span> </span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>        <span class="cf">WHEN</span> <span class="fu">EXTRACT</span>(<span class="kw">MINUTE</span> <span class="kw">FROM</span> starttime) <span class="op">&gt;=</span> <span class="dv">30</span> </span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="dt">INTERVAL</span> <span class="st">&#39;1 hour&#39;</span> </span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>        <span class="cf">ELSE</span> <span class="dt">INTERVAL</span> <span class="st">&#39;0 hour&#39;</span> </span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> rounded_time</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>  </span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a><span class="kw">FROM</span> </span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>    merged_view;</span></code></pre></div>
-<div class="sourceCode" id="cb6"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> citi_weather <span class="kw">AS</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="kw">SELECT</span> </span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    mv.<span class="op">*</span>,</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>    cpw.temperature <span class="kw">AS</span> cpw_temperature,</span>
-<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>    cpw.precipitation <span class="kw">AS</span> cpw_precipitation</span>
-<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a><span class="kw">FROM</span> </span>
-<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    merged_view2 mv</span>
-<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> </span>
-<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    CentralParkWeather cpw</span>
-<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a><span class="kw">ON</span> </span>
-<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a>    mv.rounded_time <span class="op">=</span> cpw.rounded_time;</span></code></pre></div>
-<div id="explanation-of-above-code" class="section level3">
+</div>
+<div id="explanation-of-above-code-1" class="section level3">
 <h3>Explanation of above code</h3>
-<p>In these above chunks I have written a python script to fetch
-historical weather data for Central Park from the Open-Meteo API. The
-script fetches hourly temperature and precipitation data from 2010 to
-2020 and saves it to a CSV file. I then create a table in the DuckDB
-database to store this data and load the CSV data into the table. I
-rename the ‘time’ column to ‘rounded_time’ to match the column name in
-the CitiBike data.</p>
-<p>Finally, I create a view that merges the CitiBike data with the
-Central Park weather data based on the rounded time values. This view
-will be used for further analysis in the subsequent sections.</p>
+<p>I create the table within SQL to match the structure of the CSV file
+that I will be loading into the database. This will allow me to load the
+data from the CSV file into the database with the specified datatypes
+for each column.</p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="co">-- Load data from the CSV file</span></span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="kw">COPY</span> CentralParkWeather(<span class="dt">time</span>, temperature, precipitation)</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a><span class="kw">FROM</span> <span class="st">&#39;/Users/patrick/Documents/CitiBike/central_park_weather_2010_2020.csv&#39;</span>;</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a><span class="kw">WITH</span> (FORMAT CSV, <span class="kw">HEADER</span> <span class="kw">true</span>, DELIMITER <span class="st">&#39;,&#39;</span>);</span></code></pre></div>
+</div>
+<div id="explanation-of-above-code-2" class="section level3">
+<h3>Explanation of above code</h3>
+<p>This code chunk loads the data from the CSV file into the Central
+Park weather table in the database. The COPY command is used to load the
+data from the CSV file into the table. The WITH clause specifies the
+format of the CSV file, including the header and delimiter.</p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="co">-- Rename the &#39;time&#39; column to &#39;rounded_time&#39; to merge with the CitiBike data</span></span>
+<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="kw">ALTER</span> <span class="kw">TABLE</span> CentralParkWeather</span>
+<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a><span class="kw">RENAME</span> <span class="kw">COLUMN</span> <span class="dt">Time</span> <span class="kw">TO</span> rounded_time;</span></code></pre></div>
+</div>
+<div id="explanation-of-above-code-3" class="section level3">
+<h3>Explanation of above code</h3>
+<p>I alter the column name of the Central Park weather data to match the
+column name of the CitiBike data. This will allow me to merge the two
+datasets based on the rounded time values.</p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">or</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> merged_view2 <span class="kw">AS</span></span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span>,</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>    </span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>    DATE_TRUNC(<span class="st">&#39;hour&#39;</span>, starttime) <span class="op">+</span> </span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>    <span class="cf">CASE</span> </span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>        <span class="cf">WHEN</span> <span class="fu">EXTRACT</span>(<span class="kw">MINUTE</span> <span class="kw">FROM</span> starttime) <span class="op">&gt;=</span> <span class="dv">30</span> </span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>        <span class="cf">THEN</span> <span class="dt">INTERVAL</span> <span class="st">&#39;1 hour&#39;</span> </span>
+<span id="cb6-8"><a href="#cb6-8" tabindex="-1"></a>        <span class="cf">ELSE</span> <span class="dt">INTERVAL</span> <span class="st">&#39;0 hour&#39;</span> </span>
+<span id="cb6-9"><a href="#cb6-9" tabindex="-1"></a>    <span class="cf">END</span> <span class="kw">AS</span> rounded_time</span>
+<span id="cb6-10"><a href="#cb6-10" tabindex="-1"></a>  </span>
+<span id="cb6-11"><a href="#cb6-11" tabindex="-1"></a><span class="kw">FROM</span> </span>
+<span id="cb6-12"><a href="#cb6-12" tabindex="-1"></a>    merged_view;</span></code></pre></div>
+</div>
+<div id="explanation-of-above-code-4" class="section level3">
+<h3>Explanation of above code</h3>
+<p>I create a view that alters the Citibike view that I created in the
+previous section. I round the time values to the nearest hour to match
+the Central Park weather data. This view will be used to merge the
+Citibike data with the Central Park weather data in the next
+section.</p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> citi_weather <span class="kw">AS</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="kw">SELECT</span> </span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    mv.<span class="op">*</span>,</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>    cpw.temperature <span class="kw">AS</span> cpw_temperature,</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>    cpw.precipitation <span class="kw">AS</span> cpw_precipitation</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a><span class="kw">FROM</span> </span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    merged_view2 mv</span>
+<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a><span class="kw">LEFT</span> <span class="kw">JOIN</span> </span>
+<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>    CentralParkWeather cpw</span>
+<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a><span class="kw">ON</span> </span>
+<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>    mv.rounded_time <span class="op">=</span> cpw.rounded_time;</span></code></pre></div>
+</div>
+<div id="explanation-of-above-code-5" class="section level3">
+<h3>Explanation of above code</h3>
+<p>I create a view that merges the CitiBike data with the Central Park
+weather data based on the rounded time values. This view will be used
+for further analysis in the subsequent sections.</p>
 <p><a href="homepage.html">Back to Homepage</a></p>
+</div>
 </div>
 
 
