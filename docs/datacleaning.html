@@ -11,7 +11,7 @@
 
 <meta name="author" content="Patrick Lucey" />
 
-<meta name="date" content="2024-11-20" />
+<meta name="date" content="2024-11-22" />
 
 <title>Data Cleaning With DuckDB and SQL</title>
 
@@ -2938,7 +2938,7 @@ border-radius: 0px;
 
 <h1 class="title toc-ignore">Data Cleaning With DuckDB and SQL</h1>
 <h4 class="author">Patrick Lucey</h4>
-<h4 class="date">2024-11-20</h4>
+<h4 class="date">2024-11-22</h4>
 
 </div>
 
@@ -2953,297 +2953,223 @@ border-radius: 0px;
 <span id="cb2-5"><a href="#cb2-5" tabindex="-1"></a><span class="co">-- Reduce the number of threads to 4</span></span>
 <span id="cb2-6"><a href="#cb2-6" tabindex="-1"></a><span class="kw">SET</span> threads <span class="op">=</span> <span class="dv">4</span>;</span></code></pre></div>
 </div>
-<div id="code-used-to-create-the-parquet-files-for-2013-2019" class="section level3">
-<h3>Code used to create the parquet files for 2013-2019:</h3>
-<div class="sourceCode" id="cb3"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a>CREATE OR REPLACE VIEW rides AS</span>
-<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a>SELECT</span>
-<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    tripduration<span class="sc">::</span>BIGINT as tripduration,</span>
-<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>    <span class="fu">COALESCE</span>(</span>
-<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>        <span class="fu">try_strptime</span>(starttime, <span class="st">&#39;%Y-%m-%d %H:%M:%S&#39;</span>),</span>
-<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>        <span class="fu">try_strptime</span>(starttime, <span class="st">&#39;%m/%d/%Y %H:%M:%S&#39;</span>),</span>
-<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>        <span class="fu">try_strptime</span>(starttime, <span class="st">&#39;%m/%d/%Y %H:%M&#39;</span>)</span>
-<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>    )<span class="sc">::</span>TIMESTAMP AS starttime,</span>
-<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>    <span class="fu">COALESCE</span>(</span>
-<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>        <span class="fu">try_strptime</span>(stoptime, <span class="st">&#39;%Y-%m-%d %H:%M:%S&#39;</span>),</span>
-<span id="cb3-11"><a href="#cb3-11" tabindex="-1"></a>        <span class="fu">try_strptime</span>(stoptime, <span class="st">&#39;%m/%d/%Y %H:%M:%S&#39;</span>),</span>
-<span id="cb3-12"><a href="#cb3-12" tabindex="-1"></a>        <span class="fu">try_strptime</span>(stoptime, <span class="st">&#39;%m/%d/%Y %H:%M&#39;</span>)</span>
-<span id="cb3-13"><a href="#cb3-13" tabindex="-1"></a>    )<span class="sc">::</span>TIMESTAMP AS stoptime,</span>
-<span id="cb3-14"><a href="#cb3-14" tabindex="-1"></a>    start_station_id<span class="sc">::</span>BIGINT as start_station_id,</span>
-<span id="cb3-15"><a href="#cb3-15" tabindex="-1"></a>    start_station_name<span class="sc">::</span>VARCHAR as start_station_name,</span>
-<span id="cb3-16"><a href="#cb3-16" tabindex="-1"></a>    start_station_latitude<span class="sc">::</span>DOUBLE as start_station_latitude,</span>
-<span id="cb3-17"><a href="#cb3-17" tabindex="-1"></a>    start_station_longitude<span class="sc">::</span>DOUBLE as start_station_longitude,</span>
-<span id="cb3-18"><a href="#cb3-18" tabindex="-1"></a>    end_station_id<span class="sc">::</span>BIGINT as end_station_id,</span>
-<span id="cb3-19"><a href="#cb3-19" tabindex="-1"></a>    end_station_name<span class="sc">::</span>VARCHAR as end_station_name,</span>
-<span id="cb3-20"><a href="#cb3-20" tabindex="-1"></a>    end_station_latitude<span class="sc">::</span>DOUBLE as end_station_latitude,</span>
-<span id="cb3-21"><a href="#cb3-21" tabindex="-1"></a>    end_station_longitude<span class="sc">::</span>DOUBLE as end_station_longitude,</span>
-<span id="cb3-22"><a href="#cb3-22" tabindex="-1"></a>    bikeid<span class="sc">::</span>BIGINT as bikeid,</span>
-<span id="cb3-23"><a href="#cb3-23" tabindex="-1"></a>    usertype<span class="sc">::</span>VARCHAR as usertype,</span>
-<span id="cb3-24"><a href="#cb3-24" tabindex="-1"></a>    birth_year<span class="sc">::</span>VARCHAR as birth_year,</span>
-<span id="cb3-25"><a href="#cb3-25" tabindex="-1"></a>    gender<span class="sc">::</span>BIGINT as gender,</span>
-<span id="cb3-26"><a href="#cb3-26" tabindex="-1"></a>    <span class="fu">date_part</span>(<span class="st">&#39;year&#39;</span>, starttime) AS trip_year,</span>
-<span id="cb3-27"><a href="#cb3-27" tabindex="-1"></a>    <span class="fu">date_part</span>(<span class="st">&#39;month&#39;</span>, starttime) AS trip_month</span>
-<span id="cb3-28"><a href="#cb3-28" tabindex="-1"></a>FROM</span>
-<span id="cb3-29"><a href="#cb3-29" tabindex="-1"></a>    <span class="fu">read_csv</span>(</span>
-<span id="cb3-30"><a href="#cb3-30" tabindex="-1"></a>        <span class="st">&#39;citiCSV/2015-citibike-tripdata/*/*.csv&#39;</span>,</span>
-<span id="cb3-31"><a href="#cb3-31" tabindex="-1"></a>        <span class="at">union_by_name=</span><span class="dv">1</span>,</span>
-<span id="cb3-32"><a href="#cb3-32" tabindex="-1"></a>        <span class="at">hive_partitioning=</span><span class="dv">1</span>,</span>
-<span id="cb3-33"><a href="#cb3-33" tabindex="-1"></a>        <span class="at">normalize_names=</span><span class="dv">1</span>,</span>
-<span id="cb3-34"><a href="#cb3-34" tabindex="-1"></a>        <span class="at">ignore_errors=</span><span class="dv">1</span></span>
-<span id="cb3-35"><a href="#cb3-35" tabindex="-1"></a>    );</span></code></pre></div>
-<div id="view-creation" class="section level4">
-<h4>1. <strong>View Creation</strong></h4>
-<ul>
-<li><code>CREATE OR REPLACE VIEW rides AS</code>: This statement creates
-a new view named <code>rides</code> or replaces it if it already
-exists.</li>
-</ul>
+<div id="data-wrangling" class="section level2">
+<h2>Data Wrangling</h2>
 </div>
-<div id="column-selection-and-transformation" class="section level4">
-<h4>2. <strong>Column Selection and Transformation</strong></h4>
+<div id="historical-data-integration-2013-2019---detailed-code-breakdown" class="section level2">
+<h2>Historical Data Integration (2013-2019) - Detailed Code
+Breakdown</h2>
+<p><strong>Primary View Creation (citi2)</strong></p>
+<div class="sourceCode" id="cb3"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb3-1"><a href="#cb3-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> citi2 <span class="kw">AS</span></span>
+<span id="cb3-2"><a href="#cb3-2" tabindex="-1"></a><span class="kw">SELECT</span> </span>
+<span id="cb3-3"><a href="#cb3-3" tabindex="-1"></a>    <span class="op">*</span> EXCLUDE(</span>
+<span id="cb3-4"><a href="#cb3-4" tabindex="-1"></a>        start_station_latitude,</span>
+<span id="cb3-5"><a href="#cb3-5" tabindex="-1"></a>        start_station_longitude, </span>
+<span id="cb3-6"><a href="#cb3-6" tabindex="-1"></a>        end_station_latitude, </span>
+<span id="cb3-7"><a href="#cb3-7" tabindex="-1"></a>        end_station_longitude, </span>
+<span id="cb3-8"><a href="#cb3-8" tabindex="-1"></a>        tripduration, </span>
+<span id="cb3-9"><a href="#cb3-9" tabindex="-1"></a>        bike_year</span>
+<span id="cb3-10"><a href="#cb3-10" tabindex="-1"></a>    ),</span></code></pre></div>
 <ul>
-<li><strong>tripduration</strong>: The <code>tripduration</code> column
-is cast to a <code>BIGINT</code> data type.</li>
-<li><strong>starttime and stoptime</strong>: These columns are parsed
-into <code>TIMESTAMP</code> format using the <code>COALESCE</code>
-function combined with <code>try_strptime</code>. The
-<code>COALESCE</code> function tries multiple date formats until it
-finds one that works:
+<li>Exclusion Purpose:
 <ul>
-<li><code>&#39;%Y-%m-%d %H:%M:%S&#39;</code></li>
-<li><code>&#39;%m/%d/%Y %H:%M:%S&#39;</code></li>
-<li><code>&#39;%m/%d/%Y %H:%M&#39;</code></li>
-</ul></li>
-<li><strong>Station Information</strong>: Columns related to the start
-and end stations (IDs, names, latitudes, and longitudes) are cast to
-appropriate data types (<code>BIGINT</code>, <code>VARCHAR</code>,
-<code>DOUBLE</code>).</li>
-<li><strong>bikeid</strong>: The <code>bikeid</code> column is cast to
-<code>BIGINT</code>.</li>
-<li><strong>usertype</strong>: The <code>usertype</code> column is cast
-to <code>VARCHAR</code>.</li>
-<li><strong>birth_year</strong>: The <code>birth_year</code> column is
-cast to <code>VARCHAR</code>.</li>
-<li><strong>gender</strong>: The <code>gender</code> column is cast to
-<code>BIGINT</code>.</li>
-<li><strong>trip_year and trip_month</strong>: These columns are
-extracted from the <code>starttime</code> using the
-<code>date_part</code> function to get the year and month parts,
-respectively.</li>
-</ul>
-</div>
-<div id="data-source" class="section level4">
-<h4>3. <strong>Data Source</strong></h4>
-<ul>
-<li><code>FROM read_csv(&#39;citiCSV/2015-citibike-tripdata/*/*.csv&#39;, ...)</code>:
-This part reads CSV files from the specified directory
-(<code>citiCSV/2015-citibike-tripdata/*/*.csv</code>). The options used
-are:
-<ul>
-<li><code>union_by_name=1</code>: Combines columns with the same name
-across multiple files.</li>
-<li><code>hive_partitioning=1</code>: Uses Hive-style partitioning.</li>
-<li><code>normalize_names=1</code>: Normalizes column names.</li>
-<li><code>ignore_errors=1</code>: Ignores errors during the reading
-process.</li>
+<li>Removes redundant columns</li>
+<li>Prepares for standardized naming</li>
+<li>Eliminates conflicting fields</li>
+<li>Enables clean data structure</li>
 </ul></li>
 </ul>
-</div>
-</div>
-<div id="summary" class="section level3">
-<h3>Summary</h3>
-<p>This SQL script creates a view that reads and processes Citibike trip
-data from CSV files, ensuring that date and time fields are correctly
-parsed and various columns are cast to appropriate data types. The view
-also extracts the year and month from the trip start time for easier
-querying. It should be noted that the above query was used for the years
-2013-2020 when the data was collected and presented in it’s original
-format. However, when Citibike was bought out by Lyft, they altered
-their data structure and collection methods as a result. Which is part
-of the reason that I divided the data into two different time periods to
-accommodate for the different schemas. This was done in order to be able
-to read the parquet file in more smoothly.</p>
-</div>
-<div id="loading-in-data-from-2013-2019" class="section level3">
-<h3>Loading in data from 2013-2019</h3>
-<div class="sourceCode" id="cb4"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> citi2 <span class="kw">AS</span></span>
-<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a><span class="kw">SELECT</span> </span>
-<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>    <span class="op">*</span> EXCLUDE(start_station_latitude,start_station_longitude, end_station_latitude, end_station_longitude, tripduration, bike_year),</span>
-<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>    start_station_latitude <span class="kw">as</span> start_lat,</span>
-<span id="cb4-5"><a href="#cb4-5" tabindex="-1"></a>    start_station_longitude <span class="kw">as</span> start_long,</span>
-<span id="cb4-6"><a href="#cb4-6" tabindex="-1"></a>    end_station_latitude <span class="kw">as</span> end_lat,</span>
-<span id="cb4-7"><a href="#cb4-7" tabindex="-1"></a>    end_station_longitude <span class="kw">as</span> end_long,</span>
-<span id="cb4-8"><a href="#cb4-8" tabindex="-1"></a>    <span class="fu">ROUND</span>(DATE_DIFF(<span class="st">&#39;seconds&#39;</span>, starttime, stoptime) <span class="op">/</span> <span class="dv">60</span>) <span class="kw">AS</span> tripduration_min,</span>
-<span id="cb4-9"><a href="#cb4-9" tabindex="-1"></a>    <span class="fu">ROUND</span>(</span>
-<span id="cb4-10"><a href="#cb4-10" tabindex="-1"></a>    <span class="dv">3959</span> <span class="op">*</span> <span class="dv">2</span> <span class="op">*</span> <span class="fu">ASIN</span>(<span class="fu">SQRT</span>(</span>
-<span id="cb4-11"><a href="#cb4-11" tabindex="-1"></a>        <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS(end_lat <span class="op">-</span> start_lat) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>) <span class="op">+</span></span>
-<span id="cb4-12"><a href="#cb4-12" tabindex="-1"></a>        <span class="fu">COS</span>(RADIANS(start_lat)) <span class="op">*</span> <span class="fu">COS</span>(RADIANS(end_lat)) <span class="op">*</span> </span>
-<span id="cb4-13"><a href="#cb4-13" tabindex="-1"></a>        <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS(end_long <span class="op">-</span> start_long) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>)</span>
-<span id="cb4-14"><a href="#cb4-14" tabindex="-1"></a>    )), <span class="dv">2</span></span>
-<span id="cb4-15"><a href="#cb4-15" tabindex="-1"></a>) <span class="kw">AS</span> distance_between_start_end_station_km</span>
-<span id="cb4-16"><a href="#cb4-16" tabindex="-1"></a></span>
-<span id="cb4-17"><a href="#cb4-17" tabindex="-1"></a>    </span>
-<span id="cb4-18"><a href="#cb4-18" tabindex="-1"></a><span class="kw">FROM</span> </span>
-<span id="cb4-19"><a href="#cb4-19" tabindex="-1"></a>    read_parquet(<span class="st">&#39;trip_data2/trip_year=*/trip_month=*/*.parquet&#39;</span>, union_by_name<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div>
-<div class="sourceCode" id="cb5"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> citi3 <span class="kw">AS</span></span>
-<span id="cb5-2"><a href="#cb5-2" tabindex="-1"></a><span class="kw">SELECT</span> </span>
-<span id="cb5-3"><a href="#cb5-3" tabindex="-1"></a>    <span class="op">*</span> EXCLUDE(start_time, stop_time, start_lon, end_lon, start_station_id, end_station_id, bike_id, ride_id, rideable_type, user_type),</span>
-<span id="cb5-4"><a href="#cb5-4" tabindex="-1"></a>    date_part(<span class="st">&#39;month&#39;</span>, <span class="fu">COALESCE</span>(</span>
-<span id="cb5-5"><a href="#cb5-5" tabindex="-1"></a>           try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%Y-%m-%d %H:%M:%S&#39;</span>),</span>
-<span id="cb5-6"><a href="#cb5-6" tabindex="-1"></a>           try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%Y/%m/%d %H:%M:%S&#39;</span>),</span>
-<span id="cb5-7"><a href="#cb5-7" tabindex="-1"></a>           try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%m/%d/%Y %H:%M:%S&#39;</span>),</span>
-<span id="cb5-8"><a href="#cb5-8" tabindex="-1"></a>           try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%m/%d/%Y %H:%M&#39;</span>)</span>
-<span id="cb5-9"><a href="#cb5-9" tabindex="-1"></a>       ):<span class="ch">:TIMESTAMP</span>) <span class="kw">AS</span> trip_month,</span>
-<span id="cb5-10"><a href="#cb5-10" tabindex="-1"></a>       start_time <span class="kw">as</span> starttime,</span>
-<span id="cb5-11"><a href="#cb5-11" tabindex="-1"></a>       stop_time <span class="kw">as</span> stoptime,</span>
-<span id="cb5-12"><a href="#cb5-12" tabindex="-1"></a>       start_lon <span class="kw">as</span> start_long,</span>
-<span id="cb5-13"><a href="#cb5-13" tabindex="-1"></a>       end_lon <span class="kw">as</span> end_long,</span>
-<span id="cb5-14"><a href="#cb5-14" tabindex="-1"></a>       user_type <span class="kw">as</span> usertype,</span>
-<span id="cb5-15"><a href="#cb5-15" tabindex="-1"></a>       start_station_id:<span class="ch">:DOUBLE</span> <span class="kw">as</span> start_station_id,</span>
-<span id="cb5-16"><a href="#cb5-16" tabindex="-1"></a>       end_station_id:<span class="ch">:DOUBLE</span> <span class="kw">as</span> end_station_id,</span>
-<span id="cb5-17"><a href="#cb5-17" tabindex="-1"></a>       bike_id:<span class="ch">:BIGINT</span> <span class="kw">as</span> bikeid,</span>
-<span id="cb5-18"><a href="#cb5-18" tabindex="-1"></a>       <span class="fu">ROUND</span>(DATE_DIFF(<span class="st">&#39;seconds&#39;</span>, starttime, stoptime) <span class="op">/</span> <span class="dv">60</span>) <span class="kw">AS</span> tripduration_min,</span>
-<span id="cb5-19"><a href="#cb5-19" tabindex="-1"></a>       <span class="fu">ROUND</span>(</span>
-<span id="cb5-20"><a href="#cb5-20" tabindex="-1"></a>    <span class="dv">3959</span> <span class="op">*</span> <span class="dv">2</span> <span class="op">*</span> <span class="fu">ASIN</span>(<span class="fu">SQRT</span>(</span>
-<span id="cb5-21"><a href="#cb5-21" tabindex="-1"></a>        <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS(end_lat <span class="op">-</span> start_lat) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>) <span class="op">+</span></span>
-<span id="cb5-22"><a href="#cb5-22" tabindex="-1"></a>        <span class="fu">COS</span>(RADIANS(start_lat)) <span class="op">*</span> <span class="fu">COS</span>(RADIANS(end_lat)) <span class="op">*</span> </span>
-<span id="cb5-23"><a href="#cb5-23" tabindex="-1"></a>        <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS(end_long <span class="op">-</span> start_long) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>)</span>
-<span id="cb5-24"><a href="#cb5-24" tabindex="-1"></a>    )), <span class="dv">2</span></span>
-<span id="cb5-25"><a href="#cb5-25" tabindex="-1"></a>) <span class="kw">AS</span> distance_between_start_end_station_km</span>
-<span id="cb5-26"><a href="#cb5-26" tabindex="-1"></a></span>
-<span id="cb5-27"><a href="#cb5-27" tabindex="-1"></a>       </span>
-<span id="cb5-28"><a href="#cb5-28" tabindex="-1"></a>       </span>
-<span id="cb5-29"><a href="#cb5-29" tabindex="-1"></a><span class="kw">FROM</span> </span>
-<span id="cb5-30"><a href="#cb5-30" tabindex="-1"></a>    read_parquet(<span class="st">&#39;trip_data2/trip_year=*/*.parquet&#39;</span>, union_by_name<span class="op">=</span><span class="dv">1</span>)</span></code></pre></div>
-</div>
-<div id="code-to-merge-sum2-and-sum3" class="section level3">
-<h3>Code to merge sum2 and sum3</h3>
-<div class="sourceCode" id="cb6"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> merged_view <span class="kw">AS</span></span>
-<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> citi2</span>
-<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a><span class="kw">UNION</span> <span class="kw">BY</span> NAME</span>
-<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> citi3;</span></code></pre></div>
-<p>The purpose of this is to add the years of 2016 and 2017 to the
-cumulative 2013-2019 collected data. Due to the current schema of the
-data I had to merge it in a way that allowed for it to be combined. In
-this particular case I unioned each different view by NAME in order for
-them to be properly merged.</p>
-</div>
-<div id="code-used-to-create-the-parquet-files-for-2020-2023" class="section level3">
-<h3>Code used to create the parquet files for 2020-2023:</h3>
-<p>Prior to loading in the data to R-Studio I had to organize the data
-into a format that would be usable to work with a laptop with a smaller
-disk. In order to accommodate this problem I decided to turn the data
-into parquet files in order to account for this storage problem. By
-creating the parquet files it allowed for the exploration of a dataset
-in a platform like r-studio. I used the code:
-<code>create or replace view rides as select *, date_part(&#39;year&#39;, starttime) as trip_year, date_part(&#39;month&#39;, starttime) as trip_month from read_csv_auto(&#39;citiCSV/2020-citibike-tripdata/*/*.csv&#39;, union_by_name=1, hive_partitioning=1, normalize_names=1,ignore_errors=1);</code>
-to create the view of each csv file in duckdb. I then downloaded the
-newly formatted SQL view into a parquet file to save space on my hard
-drive by using the code:
-<code>COPY rides TO &#39;citiparquet/year=&#39;year&#39;&#39; (FORMAT PARQUET, PARTITION_BY (trip_year,trip_month), COMPRESSION &#39;zstd&#39;, ROW_GROUP_SIZE 100_000);</code>
-By using this code I was able to compress the massive amounts of data
-that would’ve normally taken up gigabytes of storage into a minor file
-organized by trip year and month.</p>
-</div>
-<div id="loading-in-data-from-2020-2023-as-a-view" class="section level3">
-<h3>Loading in data from 2020-2023 as a view</h3>
-<div class="sourceCode" id="cb7"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="kw">create</span> <span class="kw">or</span> <span class="kw">replace</span> <span class="kw">view</span> citi <span class="kw">as</span> <span class="kw">select</span> <span class="op">*</span> EXCLUDE(started_at, starttime, stoptime, ended_at,start_station_latitude,start_station_longitude, start_lat, start_lng, end_lat,end_lng, end_station_latitude, end_station_longitude, tripduration),</span>
-<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a>  <span class="fu">coalesce</span>(started_at, starttime) <span class="kw">as</span> starttime,</span>
-<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>  <span class="fu">coalesce</span>(ended_at, stoptime) <span class="kw">as</span> stoptime,</span>
-<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>  <span class="fu">coalesce</span>(start_station_latitude, start_lat) <span class="kw">as</span> start_lat,</span>
-<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>  <span class="fu">coalesce</span>(start_station_longitude, start_lng) <span class="kw">as</span> start_long,</span>
-<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>  <span class="fu">coalesce</span>(end_station_latitude, end_lat) <span class="kw">as</span> end_lat,</span>
-<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>  <span class="fu">coalesce</span>(end_station_longitude, end_lng) <span class="kw">as</span> end_long,</span>
-<span id="cb7-8"><a href="#cb7-8" tabindex="-1"></a>  <span class="fu">round</span>(<span class="fu">coalesce</span>(tripduration, date_diff(<span class="st">&#39;seconds&#39;</span>, <span class="fu">coalesce</span>(started_at, starttime), <span class="fu">coalesce</span>(ended_at, stoptime)))<span class="op">/</span> <span class="dv">60</span>)  <span class="kw">as</span> tripduration_min,</span>
-<span id="cb7-9"><a href="#cb7-9" tabindex="-1"></a>  <span class="fu">ROUND</span>(</span>
-<span id="cb7-10"><a href="#cb7-10" tabindex="-1"></a>        <span class="dv">3959</span> <span class="op">*</span> <span class="dv">2</span> <span class="op">*</span> <span class="fu">ASIN</span>(<span class="fu">SQRT</span>(</span>
-<span id="cb7-11"><a href="#cb7-11" tabindex="-1"></a>            <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS(<span class="fu">coalesce</span>(end_station_latitude, end_lat) <span class="op">-</span> <span class="fu">coalesce</span>(start_station_latitude, start_lat)) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>) <span class="op">+</span></span>
-<span id="cb7-12"><a href="#cb7-12" tabindex="-1"></a>            <span class="fu">COS</span>(RADIANS(<span class="fu">coalesce</span>(start_station_latitude, start_lat))) <span class="op">*</span> <span class="fu">COS</span>(RADIANS(<span class="fu">coalesce</span>(end_station_latitude, end_lat))) <span class="op">*</span> </span>
-<span id="cb7-13"><a href="#cb7-13" tabindex="-1"></a>            <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS( <span class="fu">coalesce</span>(end_station_longitude, end_lng) <span class="op">-</span> <span class="fu">coalesce</span>(start_station_longitude, start_lng)) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>)</span>
-<span id="cb7-14"><a href="#cb7-14" tabindex="-1"></a>        )), <span class="dv">2</span></span>
-<span id="cb7-15"><a href="#cb7-15" tabindex="-1"></a>    ) <span class="kw">AS</span> distance_between_start_end_station_km</span>
-<span id="cb7-16"><a href="#cb7-16" tabindex="-1"></a>  <span class="kw">FROM</span> read_parquet(<span class="st">&#39;trip_data/trip_year=*/trip_month=*/*.parquet&#39;</span>, union_by_name<span class="op">=</span><span class="dv">1</span>);</span></code></pre></div>
-</div>
-<div id="code-explanation" class="section level3">
-<h3>Code Explanation</h3>
-<div id="column-exclusion" class="section level4">
-<h4><strong>1. Column Exclusion</strong></h4>
-<p>The <code>* EXCLUDE()</code> syntax is used to select all columns
-from the source data except for the ones listed. This helps remove
-redundant or conflicting columns that will be replaced by the new
-derived columns.</p>
-</div>
-<div id="column-unification-with-coalesce" class="section level4">
-<h4><strong>2. Column Unification with COALESCE</strong></h4>
-<p>The <code>COALESCE</code> function is used to handle columns that may
-have different names in different datasets but represent the same
-information. It returns the first non-null value from the list of
-arguments:</p>
+<p><strong>Coordinate Standardization</strong></p>
+<div class="sourceCode" id="cb4"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb4-1"><a href="#cb4-1" tabindex="-1"></a>    start_station_latitude <span class="kw">as</span> start_lat,</span>
+<span id="cb4-2"><a href="#cb4-2" tabindex="-1"></a>    start_station_longitude <span class="kw">as</span> start_long,</span>
+<span id="cb4-3"><a href="#cb4-3" tabindex="-1"></a>    end_station_latitude <span class="kw">as</span> end_lat,</span>
+<span id="cb4-4"><a href="#cb4-4" tabindex="-1"></a>    end_station_longitude <span class="kw">as</span> end_long,</span></code></pre></div>
 <ul>
-<li><code>COALESCE(started_at, starttime) AS starttime</code>: Combines
-<code>started_at</code> and <code>starttime</code> into a unified
-<code>starttime</code> column.</li>
-<li><code>COALESCE(ended_at, stoptime) AS stoptime</code>: Combines
-<code>ended_at</code> and <code>stoptime</code> into a unified
-<code>stoptime</code> column.</li>
-<li><code>COALESCE(start_station_latitude, start_lat) AS start_lat</code>:
-Combines <code>start_station_latitude</code> and <code>start_lat</code>
-into a unified <code>start_lat</code> column.</li>
-<li><code>COALESCE(start_station_longitude, start_lng) AS start_long</code>:
-Combines <code>start_station_longitude</code> and <code>start_lng</code>
-into a unified <code>start_long</code> column.</li>
-<li><code>COALESCE(end_station_latitude, end_lat) AS end_lat</code>:
-Combines <code>end_station_latitude</code> and <code>end_lat</code> into
-a unified <code>end_lat</code> column.</li>
-<li><code>COALESCE(end_station_longitude, end_lng) AS end_long</code>:
-Combines <code>end_station_longitude</code> and <code>end_lng</code>
-into a unified <code>end_long</code> column.</li>
-</ul>
-</div>
-<div id="trip-duration-calculation" class="section level4">
-<h4><strong>3. Trip Duration Calculation</strong></h4>
-<p>The trip duration is calculated in minutes:</p>
+<li>Naming Convention:
 <ul>
-<li><code>ROUND(COALESCE(tripduration, DATE_DIFF(&#39;seconds&#39;, COALESCE(started_at, starttime), COALESCE(ended_at, stoptime))) / 60) AS tripduration_min</code>:
-If <code>tripduration</code> is available, it is used directly.
-Otherwise, the difference in seconds between <code>starttime</code> and
-<code>stoptime</code> is calculated and converted to minutes by dividing
-by 60.</li>
+<li>Consistent lat/long terminology</li>
+<li>Simplified column access</li>
+<li>Improved query readability</li>
+<li>Standardized geographical references</li>
+</ul></li>
 </ul>
-</div>
-<div id="distance-calculation-using-haversine-formula" class="section level4">
-<h4><strong>4. Distance Calculation Using Haversine
-Formula</strong></h4>
-<p>The distance between the start and end stations is calculated using
-the Haversine formula, which accounts for the spherical shape of the
-Earth:</p>
+<p><strong>Trip Duration Calculation</strong></p>
+<div class="sourceCode" id="cb5"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb5-1"><a href="#cb5-1" tabindex="-1"></a>    <span class="fu">ROUND</span>(DATE_DIFF(<span class="st">&#39;seconds&#39;</span>, starttime, stoptime) <span class="op">/</span> <span class="dv">60</span>) <span class="kw">AS</span> tripduration_min,</span></code></pre></div>
 <ul>
-<li><code>ROUND(3959 * 2 * ASIN(SQRT()), 2) AS distance_between_start_end_station_km</code>:
-This formula calculates the great-circle distance between two points on
-the Earth’s surface given their latitude and longitude in radians. The
-result is rounded to 2 decimal places.</li>
-</ul>
-</div>
-<div id="reading-data-from-parquet-files" class="section level4">
-<h4><strong>5. Reading Data from Parquet Files</strong></h4>
-<p>The data is read from Parquet files located in the specified
-directory structure:</p>
+<li>Processing Steps:
 <ul>
-<li><code>FROM read_parquet(&#39;trip_data/trip_year=*/trip_month=*/*.parquet&#39;, union_by_name=1)</code>:
-This reads all Parquet files matching the pattern, combining columns by
-name.</li>
+<li>Calculates time difference in seconds</li>
+<li>Converts to minutes</li>
+<li>Rounds to nearest integer</li>
+<li>Standardizes duration metric</li>
+</ul></li>
 </ul>
-</div>
-</div>
-<div id="summary-1" class="section level3">
-<h3>Summary</h3>
-<p>The view <code>citi</code> consolidates trip data from multiple
-sources, handling different column names and calculating additional
-metrics like trip duration in minutes and the distance between start and
-end stations. This unified view simplifies data analysis by providing
-consistent and enriched data.</p>
+<p><strong>Distance Calculation (Haversine Formula)</strong></p>
+<div class="sourceCode" id="cb6"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb6-1"><a href="#cb6-1" tabindex="-1"></a>    <span class="fu">ROUND</span>(</span>
+<span id="cb6-2"><a href="#cb6-2" tabindex="-1"></a>        <span class="dv">3959</span> <span class="op">*</span> <span class="dv">2</span> <span class="op">*</span> <span class="fu">ASIN</span>(<span class="fu">SQRT</span>(</span>
+<span id="cb6-3"><a href="#cb6-3" tabindex="-1"></a>            <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS(end_lat <span class="op">-</span> start_lat) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>) <span class="op">+</span></span>
+<span id="cb6-4"><a href="#cb6-4" tabindex="-1"></a>            <span class="fu">COS</span>(RADIANS(start_lat)) <span class="op">*</span> <span class="fu">COS</span>(RADIANS(end_lat)) <span class="op">*</span> </span>
+<span id="cb6-5"><a href="#cb6-5" tabindex="-1"></a>            <span class="fu">POWER</span>(<span class="fu">SIN</span>(RADIANS(end_long <span class="op">-</span> start_long) <span class="op">/</span> <span class="dv">2</span>), <span class="dv">2</span>)</span>
+<span id="cb6-6"><a href="#cb6-6" tabindex="-1"></a>        )), <span class="dv">2</span></span>
+<span id="cb6-7"><a href="#cb6-7" tabindex="-1"></a>    ) <span class="kw">AS</span> distance_between_start_end_station_km</span></code></pre></div>
+<ul>
+<li>Formula Components:
+<ul>
+<li>Earth’s radius (3959 miles)</li>
+<li>Spherical trigonometry</li>
+<li>Radian conversion</li>
+<li>2-decimal precision output</li>
+</ul></li>
+</ul>
+<p><strong>Secondary View Creation (citi3)</strong></p>
+<div class="sourceCode" id="cb7"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb7-1"><a href="#cb7-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> citi3 <span class="kw">AS</span></span>
+<span id="cb7-2"><a href="#cb7-2" tabindex="-1"></a><span class="kw">SELECT</span> </span>
+<span id="cb7-3"><a href="#cb7-3" tabindex="-1"></a>    <span class="op">*</span> EXCLUDE(</span>
+<span id="cb7-4"><a href="#cb7-4" tabindex="-1"></a>        start_time, stop_time, start_lon, end_lon,</span>
+<span id="cb7-5"><a href="#cb7-5" tabindex="-1"></a>        start_station_id, end_station_id, bike_id,</span>
+<span id="cb7-6"><a href="#cb7-6" tabindex="-1"></a>        ride_id, rideable_type, user_type</span>
+<span id="cb7-7"><a href="#cb7-7" tabindex="-1"></a>    ),</span></code></pre></div>
+<ul>
+<li>Column Management:
+<ul>
+<li>Removes inconsistent naming</li>
+<li>Prepares for standardization</li>
+<li>Eliminates duplicate information</li>
+<li>Streamlines data structure</li>
+</ul></li>
+</ul>
+<p><strong>Date Processing</strong></p>
+<div class="sourceCode" id="cb8"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb8-1"><a href="#cb8-1" tabindex="-1"></a>    date_part(<span class="st">&#39;month&#39;</span>, <span class="fu">COALESCE</span>(</span>
+<span id="cb8-2"><a href="#cb8-2" tabindex="-1"></a>        try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%Y-%m-%d %H:%M:%S&#39;</span>),</span>
+<span id="cb8-3"><a href="#cb8-3" tabindex="-1"></a>        try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%Y/%m/%d %H:%M:%S&#39;</span>),</span>
+<span id="cb8-4"><a href="#cb8-4" tabindex="-1"></a>        try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%m/%d/%Y %H:%M:%S&#39;</span>),</span>
+<span id="cb8-5"><a href="#cb8-5" tabindex="-1"></a>        try_strptime(start_time:<span class="ch">:VARCHAR</span>, <span class="st">&#39;%m/%d/%Y %H:%M&#39;</span>)</span>
+<span id="cb8-6"><a href="#cb8-6" tabindex="-1"></a>    ):<span class="ch">:TIMESTAMP</span>) <span class="kw">AS</span> trip_month,</span></code></pre></div>
+<ul>
+<li>Format Handling:
+<ul>
+<li>Multiple date formats supported</li>
+<li>Robust parsing strategy</li>
+<li>NULL value management</li>
+<li>Consistent output format</li>
+</ul></li>
+</ul>
+<p><strong>Field Type Conversions</strong></p>
+<div class="sourceCode" id="cb9"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb9-1"><a href="#cb9-1" tabindex="-1"></a>    start_station_id:<span class="ch">:DOUBLE</span> <span class="kw">as</span> start_station_id,</span>
+<span id="cb9-2"><a href="#cb9-2" tabindex="-1"></a>    end_station_id:<span class="ch">:DOUBLE</span> <span class="kw">as</span> end_station_id,</span>
+<span id="cb9-3"><a href="#cb9-3" tabindex="-1"></a>    bike_id:<span class="ch">:BIGINT</span> <span class="kw">as</span> bikeid,</span></code></pre></div>
+<ul>
+<li>Data Type Standardization:
+<ul>
+<li>DOUBLE for station IDs</li>
+<li>BIGINT for bike identifiers</li>
+<li>Consistent numeric handling</li>
+<li>Type safety enforcement</li>
+</ul></li>
+</ul>
+<p><strong>Final Merge Operation</strong></p>
+<div class="sourceCode" id="cb10"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb10-1"><a href="#cb10-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> merged_view <span class="kw">AS</span></span>
+<span id="cb10-2"><a href="#cb10-2" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> citi2</span>
+<span id="cb10-3"><a href="#cb10-3" tabindex="-1"></a><span class="kw">UNION</span> <span class="kw">BY</span> NAME</span>
+<span id="cb10-4"><a href="#cb10-4" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span> <span class="kw">FROM</span> citi3;</span></code></pre></div>
+<ul>
+<li>Merger Characteristics:
+<ul>
+<li>Column name matching</li>
+<li>Automatic alignment</li>
+<li>Data type consistency</li>
+<li>Complete dataset integration</li>
+</ul></li>
+</ul>
+<p><strong>Technical Implementation Details</strong> - Error Handling: *
+try_strptime for safe parsing * COALESCE for NULL management * Type
+casting protection * Data validation checks</p>
+<ul>
+<li>Performance Optimization:
+<ul>
+<li>Efficient column selection</li>
+<li>Optimized calculations</li>
+<li>Streamlined data flow</li>
+<li>Minimal redundancy</li>
+</ul></li>
+</ul>
+<p>This detailed breakdown provides a comprehensive understanding of the
+code structure and its implementation for processing historical Citibike
+data.</p>
+<div id="data-processing-for-2020-2023-data---detailed-code-breakdown" class="section level3">
+<h3>Data Processing for 2020-2023 Data - Detailed Code Breakdown</h3>
+<p><strong>Initial Data Compression Strategy</strong> - Original
+Challenge: * Large dataset size incompatible with laptop storage *
+Multiple years of data (2020-2023) * Need for efficient processing -
+Solution: Parquet File Conversion</p>
+<div class="sourceCode" id="cb11"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb11-1"><a href="#cb11-1" tabindex="-1"></a><span class="kw">CREATE</span> <span class="kw">OR</span> <span class="kw">REPLACE</span> <span class="kw">VIEW</span> rides <span class="kw">AS</span> </span>
+<span id="cb11-2"><a href="#cb11-2" tabindex="-1"></a><span class="kw">SELECT</span> <span class="op">*</span>, </span>
+<span id="cb11-3"><a href="#cb11-3" tabindex="-1"></a>    date_part(<span class="st">&#39;year&#39;</span>, starttime) <span class="kw">as</span> trip_year, </span>
+<span id="cb11-4"><a href="#cb11-4" tabindex="-1"></a>    date_part(<span class="st">&#39;month&#39;</span>, starttime) <span class="kw">as</span> trip_month </span>
+<span id="cb11-5"><a href="#cb11-5" tabindex="-1"></a><span class="kw">FROM</span> read_csv_auto(<span class="st">&#39;citiCSV/2020-citibike-tripdata/*/*.csv&#39;</span>, </span>
+<span id="cb11-6"><a href="#cb11-6" tabindex="-1"></a>    union_by_name<span class="op">=</span><span class="dv">1</span>, </span>
+<span id="cb11-7"><a href="#cb11-7" tabindex="-1"></a>    hive_partitioning<span class="op">=</span><span class="dv">1</span>, </span>
+<span id="cb11-8"><a href="#cb11-8" tabindex="-1"></a>    normalize_names<span class="op">=</span><span class="dv">1</span>,</span>
+<span id="cb11-9"><a href="#cb11-9" tabindex="-1"></a>    ignore_errors<span class="op">=</span><span class="dv">1</span>);</span></code></pre></div>
+<p><strong>Parquet File Creation</strong></p>
+<div class="sourceCode" id="cb12"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="kw">COPY</span> rides <span class="kw">TO</span> <span class="st">&#39;citiparquet/year=&#39;</span>year<span class="st">&#39;&#39;</span> (</span>
+<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a>    FORMAT PARQUET, </span>
+<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a>    PARTITION_BY (trip_year,trip_month), </span>
+<span id="cb12-4"><a href="#cb12-4" tabindex="-1"></a>    COMPRESSION <span class="st">&#39;zstd&#39;</span>, </span>
+<span id="cb12-5"><a href="#cb12-5" tabindex="-1"></a>    ROW_GROUP_SIZE <span class="dv">100</span>_000</span>
+<span id="cb12-6"><a href="#cb12-6" tabindex="-1"></a>);</span></code></pre></div>
+<ul>
+<li>Benefits:
+<ul>
+<li>Significant storage reduction</li>
+<li>Organized by year and month</li>
+<li>Efficient data retrieval</li>
+<li>Compressed format</li>
+</ul></li>
+</ul>
+<p><strong>Data Unification Process</strong> - Column Standardization: *
+Removed duplicate columns * Unified column names * Standardized data
+types * Created consistent naming convention</p>
+<p><strong>Key Calculations</strong> - Trip Duration: * Converted to
+minutes * Handles multiple time format sources * Rounds to nearest
+minute</p>
+<div class="sourceCode" id="cb13"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb13-1"><a href="#cb13-1" tabindex="-1"></a><span class="fu">ROUND</span>(<span class="fu">COALESCE</span>(</span>
+<span id="cb13-2"><a href="#cb13-2" tabindex="-1"></a>    tripduration, </span>
+<span id="cb13-3"><a href="#cb13-3" tabindex="-1"></a>    DATE_DIFF(<span class="st">&#39;seconds&#39;</span>, </span>
+<span id="cb13-4"><a href="#cb13-4" tabindex="-1"></a>        <span class="fu">COALESCE</span>(started_at, starttime), </span>
+<span id="cb13-5"><a href="#cb13-5" tabindex="-1"></a>        <span class="fu">COALESCE</span>(ended_at, stoptime)</span>
+<span id="cb13-6"><a href="#cb13-6" tabindex="-1"></a>    )) <span class="op">/</span> <span class="dv">60</span>) <span class="kw">AS</span> tripduration_min</span></code></pre></div>
+<ul>
+<li>Distance Calculation:
+<ul>
+<li>Uses Haversine formula</li>
+<li>Accounts for Earth’s curvature</li>
+<li>Results in kilometers</li>
+<li>Rounds to 2 decimal places</li>
+</ul></li>
+</ul>
+<p><strong>Geographical Data Handling</strong> - Coordinate Processing:
+* Unified latitude/longitude formats * Handles multiple column names *
+Maintains precision</p>
+<div class="sourceCode" id="cb14"><pre class="sourceCode sql"><code class="sourceCode sql"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">COALESCE</span>(start_station_latitude, start_lat) <span class="kw">as</span> start_lat,</span>
+<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="fu">COALESCE</span>(start_station_longitude, start_lng) <span class="kw">as</span> start_long</span></code></pre></div>
+<p><strong>Error Handling Features</strong> - Robust Data Validation: *
+NULL value management * Multiple format support * Automatic error
+skipping * Data consistency checks</p>
+<p><strong>Final View Creation</strong> - Comprehensive Integration: *
+All years (2020-2023) combined * Consistent column structure *
+Calculated fields included * Optimized for analysis</p>
+<p><strong>Performance Optimizations</strong> - Processing Efficiency: *
+Partitioned storage * Compressed format * Optimized column selection *
+Streamlined calculations</p>
+<p>This structured approach ensures efficient data handling while
+maintaining analytical integrity across the entire dataset. The
+resulting view provides a consolidated and standardized dataset for
+further analysis and exploration.</p>
 <p><a href="weathercentralpark.html">View Webscraping code for Central
 Park Weather Data</a></p>
 <p><a href="homepage.html">Back to Homepage</a></p>
+</div>
 </div>
 
 
