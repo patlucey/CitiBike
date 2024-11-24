@@ -2943,6 +2943,24 @@ border-radius: 0px;
 </div>
 
 
+<div id="background" class="section level3">
+<h3>Background</h3>
+<p>During the initial phases of the data analysis process, data cleaning
+plays a crucial role in ensuring the quality and integrity of the
+dataset. During this time period I came accross a few issues with the
+raw display of the citibike dataset that had to be accounted for. The
+dataset was too large to be stored on my laptop and I had to find a way
+to store the data in a more efficient manner. I also had to account for
+missing values, outliers, and inconsistencies in the data. Another,
+issue that I had to account for was the multiple date formats as well as
+columns with the same values, but different column names. These issues
+were addressed by using DuckDB and SQL to clean and prepare the Citibike
+data for analysis. As well, as storing the data in a more efficient
+manner with methods like parquet so I could store the data on my
+personal laptop. The following sections provide a detailed breakdown of
+the data cleaning process for the Citibike dataset and the methods I
+used to account for these challenges.</p>
+</div>
 <div id="setup-and-establishing-duckdb-connection-and-temp-directory" class="section level3">
 <h3>Setup and Establishing DuckDB Connection and Temp Directory</h3>
 <div class="sourceCode" id="cb1"><pre class="sourceCode r"><code class="sourceCode r"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a>con <span class="ot">&lt;-</span> DBI<span class="sc">::</span><span class="fu">dbConnect</span>(duckdb<span class="sc">::</span><span class="fu">duckdb</span>(), <span class="st">&quot;citi&quot;</span>)</span></code></pre></div>
