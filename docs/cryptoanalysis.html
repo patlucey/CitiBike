@@ -11,7 +11,7 @@
 
 
 
-<title>Crypto Correlation WebScraping</title>
+<title>Crypto Data WebScraping using CryptoCompare API</title>
 
 <script>// Pandoc 2.9 adds attributes on both header and div. We remove the former (to
 // be compatible with the behavior of Pandoc < 2.8).
@@ -2934,13 +2934,14 @@ border-radius: 0px;
 
 
 
-<h1 class="title toc-ignore">Crypto Correlation WebScraping</h1>
+<h1 class="title toc-ignore">Crypto Data WebScraping using CryptoCompare
+API</h1>
 
 </div>
 
 
-<div id="crypto-correlation-webscraping" class="section level1">
-<h1>Crypto Correlation WebScraping</h1>
+<div id="libraries-used-in-the-code" class="section level1">
+<h1>Libraries used in the code:</h1>
 <div class="sourceCode" id="cb1"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb1-1"><a href="#cb1-1" tabindex="-1"></a><span class="im">import</span> requests</span>
 <span id="cb1-2"><a href="#cb1-2" tabindex="-1"></a><span class="im">import</span> pandas <span class="im">as</span> pd</span>
 <span id="cb1-3"><a href="#cb1-3" tabindex="-1"></a><span class="im">import</span> time</span>
@@ -2950,6 +2951,9 @@ border-radius: 0px;
 <span id="cb1-7"><a href="#cb1-7" tabindex="-1"></a><span class="im">import</span> seaborn <span class="im">as</span> sns</span>
 <span id="cb1-8"><a href="#cb1-8" tabindex="-1"></a><span class="im">import</span> matplotlib.pyplot <span class="im">as</span> plt</span>
 <span id="cb1-9"><a href="#cb1-9" tabindex="-1"></a><span class="im">import</span> numpy <span class="im">as</span> np</span></code></pre></div>
+</div>
+<div id="cryptodatacollector-class-code" class="section level1">
+<h1>CryptoDataCollector class code:</h1>
 <div class="sourceCode" id="cb2"><pre class="sourceCode python"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" tabindex="-1"></a><span class="kw">class</span> CryptoDataCollector:</span>
 <span id="cb2-2"><a href="#cb2-2" tabindex="-1"></a>    <span class="kw">def</span> <span class="fu">__init__</span>(<span class="va">self</span>):</span>
 <span id="cb2-3"><a href="#cb2-3" tabindex="-1"></a>        <span class="va">self</span>.api_key <span class="op">=</span> <span class="st">&quot;6e16882cab07176b6b54f14d9dc6df70bc47c9c106a5077f91e017dedc2869c7&quot;</span></span>
